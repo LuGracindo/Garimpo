@@ -42,7 +42,7 @@ const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 
 const TIMESTAMP = new RegExp(
   [
-    String.raw`\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?`,
+    String.raw`\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+|:\d{3})?(?:Z|[+-]\d{2}:?\d{2})?`,
     String.raw`\d{2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2}(?: [+-]\d{4})?`,
     String.raw`\b\d{4}-\d{2}-\d{2}\b`,
     String.raw`\b\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?\b`,

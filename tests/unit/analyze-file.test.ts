@@ -21,7 +21,7 @@ describe('análise de arquivo (@RF-10, @RF-11)', () => {
     const outcome = await analyzeBlob(blobDe('abc\ndef\nghi\n'), { blockSize: 64 * 1024 });
     expect(outcome.kind).toBe('needs-profile');
     if (outcome.kind !== 'needs-profile') return;
-    expect(outcome.candidates).toHaveLength(3);
+    expect(outcome.candidates).toHaveLength(4);
   });
 
   it('perfil escolhido pela pessoa dispensa a detecção (@RF-11)', async () => {

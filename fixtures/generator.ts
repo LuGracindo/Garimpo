@@ -4,9 +4,9 @@
 // e-mails em example.test, IPs nas faixas de documentação (RFC 5737), cartão de teste público,
 // tokens com aparência de JWT mas sem validade. Nunca usar logs reais.
 
-export type Profile = 'iso-level' | 'jsonl' | 'http-combined';
+export type Profile = 'iso-level' | 'jsonl' | 'http-combined' | 'lvl-dash';
 
-export const PROFILES: readonly Profile[] = ['iso-level', 'jsonl', 'http-combined'];
+export const PROFILES: readonly Profile[] = ['iso-level', 'jsonl', 'http-combined', 'lvl-dash'];
 
 export interface GenerateOptions {
   profile: Profile;
@@ -184,7 +184,23 @@ function clfTime(ms: number): string {
   return `${pad(d.getUTCDate(), 2)}/${MONTHS[d.getUTCMonth()]}/${d.getUTCFullYear()}:${pad(d.getUTCHours(), 2)}:${pad(d.getUTCMinutes(), 2)}:${pad(d.getUTCSeconds(), 2)} +0000`;
 }
 
+function lvlDashTime(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1, 2)}-${pad(d.getUTCDate(), 2)} ${pad(d.getUTCHours(), 2)}:${pad(d.getUTCMinutes(), 2)}:${pad(d.getUTCSeconds(), 2)}:${pad(d.getUTCMilliseconds(), 3)}`;
+}
+
 function formatEvent(profile: Profile, e: Event): string[] {
+  if (profile === 'lvl-dash') {
+    const [number, label] =
+      e.level === 'ERROR'
+        ? ['01', 'error']
+        : e.level === 'WARN'
+          ? ['02', 'warning']
+          : ['10', '------------'];
+    return [
+      `Lvl: ${number} - ${label.padEnd(12)} - ${lvlDashTime(e.timeMs)} - T${1000 + (e.bytes % 9000)} - User ${e.logger.padEnd(24)} - ${e.message}`,
+    ];
+  }
   if (profile === 'iso-level') {
     const head = `${new Date(e.timeMs).toISOString()} ${e.level} [${e.thread}] ${e.logger} - ${e.message}`;
     return [head, ...e.stack];

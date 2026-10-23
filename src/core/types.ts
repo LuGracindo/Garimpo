@@ -9,9 +9,14 @@ export function severityRank(severity: Severity): number {
   return SEVERITIES.indexOf(severity);
 }
 
-export type ProfileId = 'iso-level' | 'jsonl' | 'http-combined';
+export type ProfileId = 'iso-level' | 'jsonl' | 'http-combined' | 'lvl-dash';
 
-export const PROFILE_IDS: readonly ProfileId[] = ['iso-level', 'jsonl', 'http-combined'];
+export const PROFILE_IDS: readonly ProfileId[] = [
+  'iso-level',
+  'jsonl',
+  'http-combined',
+  'lvl-dash',
+];
 
 export type NormalizationMode = 'conservador' | 'padrao' | 'agressivo';
 

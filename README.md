@@ -8,14 +8,14 @@ O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy
 
 ## Estado: marco M1 (núcleo de análise)
 
-| Pronto                                                                                                               | Ainda não                                                       |
-| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos | Perfil (linha do tempo), Peneira, contexto e virtualização (M2) |
-| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                  | Laudo, hashes e Lacre (M3)                                      |
-| M1: perfis `iso-level`, `jsonl` e `http-combined`                                                                    | Endurecimento, e2e e acessibilidade automatizada (M4)           |
-| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                    | Publicação final (M5)                                           |
-| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                       | Perfis syslog e logfmt, `.gz` (v1.1)                            |
-| M1: lista de pepitas com gabarito e valores que variaram na tela                                                     |                                                                 |
+| Pronto                                                                                                                              | Ainda não                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                | Perfil (linha do tempo), Peneira, contexto e virtualização (M2) |
+| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                 | Laudo, hashes e Lacre (M3)                                      |
+| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`) | Endurecimento, e2e e acessibilidade automatizada (M4)           |
+| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                   | Publicação final (M5)                                           |
+| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                      | Perfis syslog e logfmt, `.gz` (v1.1)                            |
+| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                    |                                                                 |
 
 ## Primeiros passos
 
@@ -43,7 +43,7 @@ node scripts/bench-analyze.ts --size-mb 200 --profile iso-level
 
 Os logs são sintéticos e determinísticos (mesma semente, mesmo arquivo). Todos os dados pessoais são fictícios: e-mails em `example.test`, IPs nas faixas de documentação e cartão de teste público. **Nunca use logs reais de clientes ou do trabalho.**
 
-Perfis do gerador: `iso-level`, `jsonl`, `http-combined`.
+Perfis do gerador: `iso-level`, `jsonl`, `http-combined`, `lvl-dash`.
 
 ## Publicação (Cloudflare Pages)
 

@@ -5,6 +5,7 @@ import {
   isGeneralContinuation,
   isoLevelProfile,
   jsonlProfile,
+  lvlDashProfile,
   parseClfTime,
   parseIsoTime,
 } from '../../src/core/profiles.ts';
@@ -117,6 +118,44 @@ describe('perfil http-combined (@RF-13)', () => {
 
   it('não reconhece linhas de outro formato', () => {
     expect(httpCombinedProfile.parse('2026-10-22T14:03:11Z INFO ok')).toBeNull();
+  });
+});
+
+describe('perfil lvl-dash (@RF-13)', () => {
+  const linha = (nivel: string, rotulo: string, resto: string) =>
+    `Lvl: ${nivel} - ${rotulo.padEnd(12)} - 2026-01-15 10:00:00:123 - T1234   - ${resto}`;
+
+  it('extrai tempo com milissegundos após dois-pontos, nível e a mensagem sem o contexto', () => {
+    const parsed = lvlDashProfile.parse(
+      linha('02', 'warning', 'User internal             - Limite alterado de 50 para 5000'),
+    );
+    expect(parsed).toEqual({
+      timeMs: Date.UTC(2026, 0, 15, 10, 0, 0, 123),
+      level: 'WARN',
+      message: 'Limite alterado de 50 para 5000',
+    });
+  });
+
+  it('usa o rótulo quando existe e o número quando o rótulo está em branco', () => {
+    const nivel = (n: string, rotulo: string) =>
+      lvlDashProfile.parse(linha(n, rotulo, 'User x - m'))?.level;
+    expect(nivel('01', 'error')).toBe('ERROR');
+    expect(nivel('10', '------------')).toBe('INFO');
+    expect(nivel('00', '------------')).toBe('FATAL');
+    expect(nivel('01', '------------')).toBe('ERROR');
+    expect(nivel('05', '------------')).toBe('INFO');
+  });
+
+  it('mantém " - " dentro da mensagem e aceita linha sem contexto', () => {
+    const comTraco = lvlDashProfile.parse(linha('10', '------------', 'User internal - a - b - c'));
+    expect(comTraco?.message).toBe('a - b - c');
+    const semContexto = lvlDashProfile.parse(linha('10', '------------', 'mensagem solta'));
+    expect(semContexto?.message).toBe('mensagem solta');
+  });
+
+  it('não reconhece linhas de outro formato', () => {
+    expect(lvlDashProfile.parse('2026-10-22T14:03:11Z INFO ok')).toBeNull();
+    expect(lvlDashProfile.parse('Lvl: dez - x')).toBeNull();
   });
 });
 

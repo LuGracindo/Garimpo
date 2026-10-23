@@ -12,6 +12,7 @@ describe('normalização (@RF-20)', () => {
     expect(padrao('em 2026-10-22T14:03:11.482Z e 2026-10-22 14:03:11')).toBe('em <TS> e <TS>');
     expect(padrao('às 14:03:11 do dia 22/Oct/2026:14:03:11 +0000')).toBe('às <TS> do dia <TS>');
     expect(padrao('epoch 1761141791 e 1761141791123')).toBe('epoch <TS> e <TS>');
+    expect(padrao('iniciou 2026-09-27 14:35:32:382 ok')).toBe('iniciou <TS> ok');
   });
 
   it('etapas 4 a 6: UUID, e-mail e IP', () => {
