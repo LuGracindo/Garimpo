@@ -34,3 +34,15 @@ Fonte: SDD, seção 16.1, e seção 19 (decisões de 22 de outubro de 2026). Cad
 9. **Severidade dominante** = a mais grave entre as ocorrências da pepita.
 10. **Excesso de pepitas**: acima de 100.000 pepitas distintas, as novas são reunidas em uma pepita de excesso e o resumo avisa.
 11. **Sem parâmetros de propriedade no construtor** (`constructor(private x)`): o Node 22 em modo de remoção de tipos não os aceita, e os scripts rodam `.ts` direto no Node.
+
+## Ajustes surgidos na implementação do M2 (parte 1)
+
+1. **Sessão no Worker**: depois da análise, o Worker guarda o índice de eventos (offsets, tempos, pepita e ranking) numa `Session` e responde `query`, `histogram`, `occurrences` e `context`. O arquivo nunca é copiado para a interface: as linhas mostradas vêm do `Blob` original, por fatias, sob demanda (ADR-03).
+2. **Cancelamento por tipo**: só vale o pedido mais recente de cada tipo de consulta; os anteriores respondem `cancelled` e a interface os ignora. Uma busca de outro texto abandona a varredura em andamento; consultas iguais simultâneas dividem o mesmo trabalho.
+3. **Eixo do Perfil**: tempo quando o log tem horário; caso contrário, a ordem dos eventos. Os baldes têm tamanho "redondo" (até 240) e a geometria não muda ao filtrar, para o gráfico não "pular". O histograma ignora o intervalo escolhido (o intervalo é desenhado sobre ele).
+4. **Intervalo semiaberto**: `from` inclusivo e `to` exclusivo, em milissegundos (ou índice do evento, no eixo de ordem).
+5. **Busca de texto** literal em bytes, com dobra de maiúsculas só para ASCII; acha também linhas de continuação (stack trace). Regex segura fica para a parte 2.
+6. **Contagem por pepita** ignora a pepita escolhida, para mostrar o que cada uma teria sob o filtro.
+7. **Sedimento** = todas as linhas que passam no filtro, na ordem do arquivo, sem restringir à pepita; **Ocorrências** = as da pepita escolhida.
+8. **Estilo dinâmico** na lista virtual (altura e deslocamento) também usa `element.style` via objeto, permitido pela CSP.
+9. **Verificação**: a interface foi exercitada num Chromium real com a CSP de produção (arquivos de 0,6 MB e 40 MB): sem violações além da sonda do selo; com 40 MB, 26 linhas no DOM durante a rolagem.

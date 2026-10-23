@@ -22,7 +22,7 @@ export interface AnalyzeOptions {
 export type AnalyzeOutcome =
   | { kind: 'cancelled' }
   | { kind: 'needs-profile'; candidates: Candidate[] }
-  | { kind: 'ready'; result: AnalysisResult; bytesRead: number };
+  | { kind: 'ready'; result: AnalysisResult; bytesRead: number; analyzer: Analyzer };
 
 /** Lê o começo do arquivo e devolve as primeiras linhas não vazias, para detectar o formato. */
 export async function readSample(blob: BlobLike, maxLines = 500): Promise<string[]> {
@@ -57,7 +57,7 @@ export async function analyzeBlob(
 
   if (blob.size === 0) {
     const analyzer = new Analyzer({ profile: profile ?? 'iso-level', mode: options.mode });
-    return { kind: 'ready', result: analyzer.finish(), bytesRead: 0 };
+    return { kind: 'ready', result: analyzer.finish(), bytesRead: 0, analyzer };
   }
 
   if (!profile) {
@@ -91,5 +91,5 @@ export async function analyzeBlob(
   }
 
   if (isCancelled()) return { kind: 'cancelled' };
-  return { kind: 'ready', result: analyzer.finish(), bytesRead };
+  return { kind: 'ready', result: analyzer.finish(), bytesRead, analyzer };
 }

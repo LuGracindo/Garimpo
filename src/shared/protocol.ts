@@ -2,12 +2,16 @@
 // Regra SEG-19: mensagens de erro nunca carregam trechos do arquivo.
 
 import type { AnalysisResult } from '../core/analyzer.ts';
+import type { ContextLine } from '../core/context.ts';
+import { isFilter, type Filter } from '../core/filter.ts';
+import type { Histogram } from '../core/histogram.ts';
 import {
   NORMALIZATION_MODES,
   PROFILE_IDS,
   SEVERITIES,
   type NormalizationMode,
   type ProfileId,
+  type Severity,
 } from '../core/types.ts';
 
 export const PROTOCOL_VERSION = 1;
@@ -28,7 +32,28 @@ export interface ProfileCandidate {
   score: number;
 }
 
+export const MAX_OCCURRENCES_PER_PAGE = 500;
+export const MAX_CONTEXT_LINES = 50;
+
+interface Envelope {
+  requestId: number;
+  protocolVersion: typeof PROTOCOL_VERSION;
+}
+
+export interface OccurrenceRowMessage {
+  event: number;
+  timeMs: number | null;
+  severity: Severity;
+  nuggetId: number;
+  offset: number;
+  text: string;
+}
+
 export type UiToWorker =
+  | ({ type: 'query'; filter: Filter } & Envelope)
+  | ({ type: 'histogram'; filter: Filter } & Envelope)
+  | ({ type: 'occurrences'; filter: Filter; start: number; count: number } & Envelope)
+  | ({ type: 'context'; event: number; before: number; after: number } & Envelope)
   | {
       type: 'open';
       requestId: number;
@@ -65,6 +90,15 @@ export type WorkerToUi =
       protocolVersion: typeof PROTOCOL_VERSION;
       candidates: ProfileCandidate[];
     }
+  | ({ type: 'query-result'; total: number; nuggetCounts: [number, number][] } & Envelope)
+  | ({ type: 'histogram-result'; histogram: Histogram } & Envelope)
+  | ({
+      type: 'occurrences-result';
+      total: number;
+      start: number;
+      rows: OccurrenceRowMessage[];
+    } & Envelope)
+  | ({ type: 'context-result'; lines: ContextLine[] } & Envelope)
   | { type: 'cancelled'; requestId: number; protocolVersion: typeof PROTOCOL_VERSION }
   | {
       type: 'error';
@@ -89,6 +123,31 @@ export function isUiToWorker(value: unknown): value is UiToWorker {
   if (!isSafeInt(value['requestId'])) return false;
 
   if (value['type'] === 'cancel') return true;
+
+  if (value['type'] === 'query' || value['type'] === 'histogram') return isFilter(value['filter']);
+
+  if (value['type'] === 'occurrences') {
+    const count = value['count'];
+    return (
+      isFilter(value['filter']) &&
+      isSafeInt(value['start']) &&
+      isSafeInt(count) &&
+      count >= 1 &&
+      count <= MAX_OCCURRENCES_PER_PAGE
+    );
+  }
+
+  if (value['type'] === 'context') {
+    const before = value['before'];
+    const after = value['after'];
+    return (
+      isSafeInt(value['event']) &&
+      isSafeInt(before) &&
+      before <= MAX_CONTEXT_LINES &&
+      isSafeInt(after) &&
+      after <= MAX_CONTEXT_LINES
+    );
+  }
 
   if (value['type'] === 'open') {
     if (typeof Blob === 'undefined' || !(value['file'] instanceof Blob)) return false;
@@ -185,7 +244,58 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
   return Array.isArray(nuggets) && nuggets.every(isNugget);
 }
 
-const WORKER_TYPES = new Set(['progress', 'ready', 'needs-profile', 'cancelled', 'error']);
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((n) => typeof n === 'number' && Number.isFinite(n));
+}
+
+function isHistogram(value: unknown): value is Histogram {
+  if (!isRecord(value)) return false;
+  const counts = value['counts'];
+  return (
+    (value['axis'] === 'time' || value['axis'] === 'order') &&
+    typeof value['start'] === 'number' &&
+    typeof value['bucketSize'] === 'number' &&
+    isSafeInt(value['buckets']) &&
+    isSafeInt(value['untimed']) &&
+    isSafeInt(value['total']) &&
+    Array.isArray(counts) &&
+    counts.length === SEVERITIES.length &&
+    counts.every((row) => isNumberArray(row) && row.length === value['buckets'])
+  );
+}
+
+function isOccurrenceRow(value: unknown): value is OccurrenceRowMessage {
+  return (
+    isRecord(value) &&
+    isSafeInt(value['event']) &&
+    isNumberOrNull(value['timeMs']) &&
+    isSeverity(value['severity']) &&
+    isSafeInt(value['nuggetId']) &&
+    isSafeInt(value['offset']) &&
+    typeof value['text'] === 'string'
+  );
+}
+
+function isContextLine(value: unknown): value is ContextLine {
+  return (
+    isRecord(value) &&
+    (value['kind'] === 'before' || value['kind'] === 'event' || value['kind'] === 'after') &&
+    typeof value['text'] === 'string' &&
+    typeof value['cut'] === 'boolean'
+  );
+}
+
+const WORKER_TYPES = new Set([
+  'progress',
+  'ready',
+  'needs-profile',
+  'query-result',
+  'histogram-result',
+  'occurrences-result',
+  'context-result',
+  'cancelled',
+  'error',
+]);
 
 export function isWorkerToUi(value: unknown): value is WorkerToUi {
   if (!isRecord(value)) return false;
@@ -217,6 +327,37 @@ export function isWorkerToUi(value: unknown): value is WorkerToUi {
             isProfileId(candidate['profile']) &&
             typeof candidate['score'] === 'number',
         )
+      );
+    }
+    case 'query-result': {
+      const counts = value['nuggetCounts'];
+      return (
+        isSafeInt(value['total']) &&
+        Array.isArray(counts) &&
+        counts.every(
+          (pair) =>
+            Array.isArray(pair) && pair.length === 2 && isSafeInt(pair[0]) && isSafeInt(pair[1]),
+        )
+      );
+    }
+    case 'histogram-result':
+      return isHistogram(value['histogram']);
+    case 'occurrences-result': {
+      const rows = value['rows'];
+      return (
+        isSafeInt(value['total']) &&
+        isSafeInt(value['start']) &&
+        Array.isArray(rows) &&
+        rows.length <= MAX_OCCURRENCES_PER_PAGE &&
+        rows.every(isOccurrenceRow)
+      );
+    }
+    case 'context-result': {
+      const lines = value['lines'];
+      return (
+        Array.isArray(lines) &&
+        lines.length <= 2 * MAX_CONTEXT_LINES + 200 &&
+        lines.every(isContextLine)
       );
     }
     case 'cancelled':

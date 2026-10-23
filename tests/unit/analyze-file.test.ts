@@ -25,10 +25,7 @@ describe('análise de arquivo (@RF-10, @RF-11)', () => {
   });
 
   it('perfil escolhido pela pessoa dispensa a detecção (@RF-11)', async () => {
-    const outcome = await analyzeBlob(blobDe('abc\ndef\n'), {
-      blockSize: 64 * 1024,
-      profile: 'jsonl',
-    });
+    const outcome = await analyzeBlob(blobDe('abc\ndef\n'), { blockSize: 64 * 1024, profile: 'jsonl' });
     expect(outcome.kind).toBe('ready');
     if (outcome.kind !== 'ready') return;
     expect(outcome.result.summary.profileSource).toBe('manual');
@@ -65,6 +62,8 @@ describe('análise de arquivo (@RF-10, @RF-11)', () => {
     const a = await analyzeBlob(blobDe(log), { blockSize: 64 * 1024, profile: 'iso-level' });
     const b = await analyzeBlob(blobDe(log), { blockSize: 1024 * 1024, profile: 'iso-level' });
     expect(a.kind).toBe('ready');
-    expect(b).toEqual(a);
+    expect(b.kind).toBe('ready');
+    if (a.kind !== 'ready' || b.kind !== 'ready') return;
+    expect(b.result).toEqual(a.result);
   });
 });

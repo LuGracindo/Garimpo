@@ -86,4 +86,91 @@ describe('protocolo UI e Worker (@SEG-08)', () => {
     expect(isWorkerToUi({ ...base, candidates: [{ profile: 'xml', score: 0.4 }] })).toBe(false);
     expect(isWorkerToUi({ ...base, candidates: 'jsonl' })).toBe(false);
   });
+
+  it('valida os pedidos de consulta (filtro, página e contexto)', () => {
+    const base = { requestId: 2, protocolVersion: 1 };
+    const filter = {
+      levels: ['ERROR'],
+      from: null,
+      to: null,
+      nuggetId: null,
+      text: 'x',
+      caseSensitive: false,
+    };
+    expect(isUiToWorker({ type: 'query', filter, ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'histogram', filter, ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'occurrences', filter, start: 0, count: 100, ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'occurrences', filter, start: 0, count: 100000, ...base })).toBe(
+      false,
+    );
+    expect(isUiToWorker({ type: 'occurrences', filter, start: -1, count: 10, ...base })).toBe(
+      false,
+    );
+    expect(isUiToWorker({ type: 'query', filter: { ...filter, levels: ['X'] }, ...base })).toBe(
+      false,
+    );
+    expect(
+      isUiToWorker({ type: 'query', filter: { ...filter, text: 'a'.repeat(501) }, ...base }),
+    ).toBe(false);
+    expect(isUiToWorker({ type: 'context', event: 3, before: 5, after: 5, ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'context', event: 3, before: 51, after: 5, ...base })).toBe(false);
+  });
+
+  it('valida as respostas de consulta', () => {
+    const base = { requestId: 2, protocolVersion: 1 };
+    expect(isWorkerToUi({ type: 'query-result', total: 3, nuggetCounts: [[1, 3]], ...base })).toBe(
+      true,
+    );
+    expect(isWorkerToUi({ type: 'query-result', total: -1, nuggetCounts: [], ...base })).toBe(
+      false,
+    );
+    expect(isWorkerToUi({ type: 'query-result', total: 1, nuggetCounts: [[1]], ...base })).toBe(
+      false,
+    );
+    const row = { event: 0, timeMs: null, severity: 'INFO', nuggetId: 1, offset: 0, text: 'a' };
+    expect(
+      isWorkerToUi({ type: 'occurrences-result', total: 1, start: 0, rows: [row], ...base }),
+    ).toBe(true);
+    expect(
+      isWorkerToUi({
+        type: 'occurrences-result',
+        total: 1,
+        start: 0,
+        rows: [{ ...row, severity: 'X' }],
+        ...base,
+      }),
+    ).toBe(false);
+    const lines = [{ kind: 'event', text: 'a', cut: false }];
+    expect(isWorkerToUi({ type: 'context-result', lines, ...base })).toBe(true);
+    expect(
+      isWorkerToUi({
+        type: 'context-result',
+        lines: [{ kind: 'x', text: 'a', cut: false }],
+        ...base,
+      }),
+    ).toBe(false);
+    const histogram = {
+      axis: 'time',
+      start: 0,
+      bucketSize: 1000,
+      buckets: 2,
+      counts: [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+        [1, 0],
+        [0, 0],
+      ],
+      untimed: 0,
+      total: 1,
+    };
+    expect(isWorkerToUi({ type: 'histogram-result', histogram, ...base })).toBe(true);
+    expect(
+      isWorkerToUi({
+        type: 'histogram-result',
+        histogram: { ...histogram, counts: [[1]] },
+        ...base,
+      }),
+    ).toBe(false);
+  });
 });

@@ -432,3 +432,410 @@ body {
   font-family: var(--f-dado);
   margin-right: auto;
 }
+
+/* ---- Bateia (M2) ---- */
+
+.principal-bateia {
+  display: block;
+  padding: calc(var(--u) * 3);
+}
+
+.bateia {
+  display: grid;
+  gap: calc(var(--u) * 3);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.bateia-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2);
+}
+
+.bateia-corpo {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: calc(var(--u) * 3);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .bateia-corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.bateia-esquerda,
+.peneira,
+.lista-pepitas {
+  display: grid;
+  gap: calc(var(--u) * 1.5);
+  align-content: start;
+}
+
+.perfil,
+.peneira,
+.detalhe {
+  padding: calc(var(--u) * 2);
+  background: var(--argila);
+  border: var(--borda);
+  border-radius: var(--raio);
+}
+
+.perfil {
+  display: grid;
+  gap: var(--u);
+}
+
+.perfil-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.perfil-grafico {
+  width: 100%;
+  height: 140px;
+  touch-action: none;
+  cursor: crosshair;
+  background: var(--leito);
+  border: var(--borda);
+}
+
+.perfil-base {
+  stroke: var(--seixo);
+  stroke-width: 1;
+}
+
+.barra-fatal {
+  fill: var(--ferrugem);
+}
+
+.barra-error {
+  fill: var(--ferrugem);
+  fill-opacity: 0.7;
+}
+
+.barra-warn {
+  fill: var(--cobre);
+}
+
+.barra-info {
+  fill: var(--agua);
+}
+
+.barra-debug {
+  fill: var(--poeira);
+  fill-opacity: 0.6;
+}
+
+.selecao {
+  fill: var(--areia);
+  fill-opacity: 0.12;
+  stroke: var(--areia);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.selecao-ativa {
+  fill-opacity: 0.2;
+}
+
+.perfil-eixo {
+  display: flex;
+  justify-content: space-between;
+  color: var(--poeira);
+  font-family: var(--f-dado);
+  font-size: 0.75rem;
+}
+
+.perfil-tabela {
+  max-height: 240px;
+  overflow: auto;
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+}
+
+.perfil-tabela table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.perfil-tabela th,
+.perfil-tabela td {
+  padding: 4px var(--u);
+  text-align: left;
+  border-bottom: var(--borda);
+}
+
+.botao-discreto {
+  padding: 2px var(--u);
+  background: transparent;
+  color: var(--areia);
+  border: 1px solid var(--poeira);
+  border-radius: var(--raio);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.botao-discreto:hover {
+  background: var(--seixo);
+}
+
+.niveis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--u);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.niveis .rotulo {
+  width: 100%;
+  padding: 0;
+}
+
+.nivel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--u);
+  background: transparent;
+  color: var(--areia);
+  border: 1px solid var(--poeira);
+  border-radius: var(--raio);
+  font: inherit;
+  font-family: var(--f-dado);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.nivel[aria-pressed='false'] {
+  color: var(--poeira);
+  border-style: dashed;
+  text-decoration: line-through;
+}
+
+.nivel[aria-pressed='true'] {
+  background: var(--seixo);
+  border-color: var(--areia);
+}
+
+.nivel-marca {
+  width: 8px;
+  height: 8px;
+  background: var(--poeira);
+}
+
+.nivel-fatal .nivel-marca,
+.nivel-error .nivel-marca {
+  background: var(--ferrugem);
+}
+
+.nivel-warn .nivel-marca {
+  background: var(--cobre);
+}
+
+.nivel-info .nivel-marca {
+  background: var(--agua);
+}
+
+.nivel-n {
+  color: var(--poeira);
+}
+
+.campo {
+  display: grid;
+  gap: 4px;
+}
+
+.entrada,
+.numero input {
+  padding: 6px var(--u);
+  background: var(--leito);
+  color: var(--areia);
+  border: 1px solid var(--poeira);
+  border-radius: var(--raio);
+  font: inherit;
+  font-family: var(--f-dado);
+  font-size: 0.875rem;
+}
+
+.caixa {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+  font-size: 0.8125rem;
+}
+
+.chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--u);
+  margin: 0;
+  font-family: var(--f-dado);
+  font-size: 0.75rem;
+}
+
+.pepita-botao {
+  display: grid;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pepita-botao[aria-pressed='true'] {
+  background: var(--seixo);
+  border-color: var(--areia);
+}
+
+.pepita-linhas {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.abas {
+  display: flex;
+  gap: var(--u);
+  border-bottom: var(--borda);
+  margin-bottom: calc(var(--u) * 2);
+}
+
+.aba {
+  padding: var(--u) calc(var(--u) * 1.5);
+  background: transparent;
+  color: var(--poeira);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aba[aria-selected='true'] {
+  color: var(--areia);
+  border-bottom-color: var(--areia);
+}
+
+.painel-aba {
+  display: grid;
+  gap: calc(var(--u) * 2);
+}
+
+.resumo {
+  display: grid;
+  gap: var(--u);
+}
+
+.virtual {
+  height: 360px;
+  overflow: auto;
+  background: var(--leito);
+  border: var(--borda);
+}
+
+.virtual-altura {
+  position: relative;
+  min-width: 100%;
+}
+
+.virtual-janela {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.ocorrencia {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.5);
+  height: 28px;
+  padding: 0 var(--u);
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocorrencia-ativa {
+  background: var(--seixo);
+  box-shadow: inset 2px 0 0 var(--areia);
+}
+
+.oc-tempo {
+  flex: none;
+  color: var(--poeira);
+}
+
+.oc-nivel {
+  flex: none;
+  width: 6ch;
+}
+
+.oc-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contexto {
+  display: grid;
+  gap: var(--u);
+}
+
+.contexto-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.contexto-topo .subtitulo {
+  margin-right: auto;
+}
+
+.numero {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+  font-size: 0.8125rem;
+}
+
+.numero input {
+  width: 6ch;
+}
+
+.contexto-linhas {
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+  padding: var(--u);
+  background: var(--leito);
+  border: var(--borda);
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.linha-before,
+.linha-after {
+  color: var(--poeira);
+}
+
+.linha-event {
+  display: block;
+  color: var(--areia);
+  box-shadow: inset 2px 0 0 var(--ouro);
+  padding-left: var(--u);
+}

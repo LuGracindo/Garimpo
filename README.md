@@ -6,16 +6,19 @@ Aplicação web estática, 100% no navegador, sem backend. Código privado; apen
 
 O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy>. Em caso de dúvida, o SDD (principalmente a seção 19, de decisões) é a referência.
 
-## Estado: marco M1 (núcleo de análise)
+## Estado: marco M2, parte 1 (interface da bateia)
 
-| Pronto                                                                                                                              | Ainda não                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                | Perfil (linha do tempo), Peneira, contexto e virtualização (M2) |
-| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                 | Laudo, hashes e Lacre (M3)                                      |
-| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`) | Endurecimento, e2e e acessibilidade automatizada (M4)           |
-| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                   | Publicação final (M5)                                           |
-| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                      | Perfis syslog e logfmt, `.gz` (v1.1)                            |
-| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                    |                                                                 |
+| Pronto                                                                                                                              | Ainda não                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                | M2 parte 2: regex segura, atalhos de teclado, estados extras (arquivo binário, acima do limite, falta de memória) |
+| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                 | Laudo, hashes e Lacre (M3)                                                                                        |
+| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`) | Endurecimento, e2e e acessibilidade automatizada (M4)                                                             |
+| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                   | Publicação final (M5)                                                                                             |
+| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                      | Perfis syslog e logfmt, `.gz` (v1.1)                                                                              |
+| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                    |                                                                                                                   |
+| M2: Perfil (barras por severidade, seleção de intervalo por arrasto e teclado, tabela equivalente)                                  |                                                                                                                   |
+| M2: Peneira (níveis, intervalo, pepita e texto literal), contagem por pepita sob o filtro                                           |                                                                                                                   |
+| M2: detalhe com abas Resumo, Ocorrências e Sedimento, lista virtualizada e contexto sob demanda                                     |                                                                                                                   |
 
 ## Primeiros passos
 
