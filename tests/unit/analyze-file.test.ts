@@ -25,7 +25,10 @@ describe('análise de arquivo (@RF-10, @RF-11)', () => {
   });
 
   it('perfil escolhido pela pessoa dispensa a detecção (@RF-11)', async () => {
-    const outcome = await analyzeBlob(blobDe('abc\ndef\n'), { blockSize: 64 * 1024, profile: 'jsonl' });
+    const outcome = await analyzeBlob(blobDe('abc\ndef\n'), {
+      blockSize: 64 * 1024,
+      profile: 'jsonl',
+    });
     expect(outcome.kind).toBe('ready');
     if (outcome.kind !== 'ready') return;
     expect(outcome.result.summary.profileSource).toBe('manual');

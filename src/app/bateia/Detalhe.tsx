@@ -12,7 +12,7 @@ import { Avisos } from './Avisos.tsx';
 import { Contexto } from './Contexto.tsx';
 import { Ocorrencias } from './Ocorrencias.tsx';
 
-type Aba = 'resumo' | 'ocorrencias' | 'sedimento';
+export type Aba = 'resumo' | 'ocorrencias' | 'sedimento';
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'resumo', rotulo: t.abaResumo },
@@ -26,6 +26,8 @@ interface Props {
   nugget: NuggetView | null;
   filter: Filter;
   filterId: string;
+  aba: Aba;
+  onAba: (aba: Aba) => void;
 }
 
 function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: NuggetView | null }) {
@@ -92,8 +94,7 @@ function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: Nugget
   );
 }
 
-export function Detalhe({ client, analysis, nugget, filter, filterId }: Props) {
-  const [aba, setAba] = useState<Aba>('resumo');
+export function Detalhe({ client, analysis, nugget, filter, filterId, aba, onAba: setAba }: Props) {
   const [active, setActive] = useState<OccurrenceRowMessage | null>(null);
 
   const onTabKey = (event: KeyboardEvent): void => {

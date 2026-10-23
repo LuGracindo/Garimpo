@@ -839,3 +839,55 @@ body {
   box-shadow: inset 2px 0 0 var(--ouro);
   padding-left: var(--u);
 }
+
+/* ---- M2 parte 2: ações, atalhos e diálogo ---- */
+
+.bateia-acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+}
+
+.bateia-acoes .botao {
+  margin-top: 0;
+}
+
+.fundo-dialogo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--u) * 3);
+  background: color-mix(in srgb, var(--leito) 80%, transparent);
+}
+
+.dialogo {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  width: min(520px, 100%);
+  padding: calc(var(--u) * 3);
+  background: var(--argila);
+  border: 1px solid var(--poeira);
+  border-radius: var(--raio);
+}
+
+.tabela-atalhos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabela-atalhos th,
+.tabela-atalhos td {
+  padding: 4px var(--u);
+  text-align: left;
+  border-bottom: var(--borda);
+}
+
+kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--poeira);
+  border-radius: var(--raio);
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+}

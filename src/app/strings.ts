@@ -82,4 +82,34 @@ export const t = {
   total: 'Total',
   semHorario: 'sem horário',
   falhaConsulta: 'Não foi possível consultar o arquivo.',
+  regexRotulo: 'Expressão regular',
+  regexAviso:
+    'Este padrão repete grupos que já se repetem e pode ser lento. A busca é interrompida se passar de 2 s.',
+  regexInvalida: 'Expressão regular inválida. Confira parênteses e colchetes.',
+  regexPrazo:
+    'A expressão passou do prazo de 2 s e foi interrompida. Simplifique o padrão ou use texto literal.',
+  atalhosBotao: 'Atalhos',
+  atalhosTitulo: 'Atalhos de teclado',
+  atalhosAtivos: 'Ativar atalhos de uma tecla',
+  atalhosAjuda: 'Atalhos de uma tecla não funcionam enquanto você digita em um campo.',
+  fechar: 'Fechar',
+  tecla: 'Tecla',
+  acao: 'Ação',
+  atalhoBusca: 'Focar a busca',
+  atalhoPepitas: 'Próxima / anterior pepita',
+  atalhoAbrir: 'Abrir a pepita escolhida (ocorrências)',
+  atalhoOcorrencia: 'Ocorrência anterior / próxima',
+  atalhoFiltros: 'Ir aos filtros',
+  atalhoAtalhos: 'Mostrar atalhos',
+  atalhoEsc: 'Fechar painel ou cancelar processamento',
+  erroBinarioTitulo: 'Este arquivo parece binário.',
+  erroBinarioTexto:
+    'Há bytes nulos no começo, o que não é comum em texto. Se for um log em UTF-16, converta para UTF-8 e tente de novo.',
+  erroLimiteTitulo: 'Este arquivo é grande demais.',
+  erroLimiteTexto:
+    'O limite é 2 GB por arquivo. Corte o log por período (por exemplo, um dia por vez) e abra de novo.',
+  erroMemoriaTitulo: 'Faltou memória para este arquivo.',
+  erroMemoriaTexto:
+    'Feche outras abas e tente de novo, ou abra um trecho menor do log. Nada foi enviado a lugar nenhum.',
+  tentarOutro: 'Abrir outro arquivo',
 } as const;

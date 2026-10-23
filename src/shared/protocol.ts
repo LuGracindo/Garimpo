@@ -63,7 +63,17 @@ export type UiToWorker =
     }
   | { type: 'cancel'; requestId: number; protocolVersion: typeof PROTOCOL_VERSION };
 
-export type ErrorCode = 'GAR-PRO-001' | 'GAR-IO-001';
+export type ErrorCode =
+  | 'GAR-PRO-001'
+  | 'GAR-IO-001'
+  | 'GAR-BIN-001'
+  | 'GAR-LIM-001'
+  | 'GAR-MEM-001'
+  | 'GAR-RGX-001'
+  | 'GAR-RGX-002';
+
+/** Teto de tamanho de arquivo aceito (SDD: teto absoluto de 2 GB). */
+export const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024;
 
 export type WorkerToUi =
   | {

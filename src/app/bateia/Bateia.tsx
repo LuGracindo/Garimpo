@@ -1,15 +1,22 @@
 // A bateia: tela de trabalho depois da análise. Perfil no alto; Peneira e pepitas à esquerda;
 // detalhe à direita (SDD 2.5). O filtro é a única fonte de verdade e vai inteiro ao Worker.
 
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AnalysisResult } from '../../core/analyzer.ts';
 import { EMPTY_FILTER, filterKey, isEmptyFilter, type Filter } from '../../core/filter.ts';
 import type { Histogram } from '../../core/histogram.ts';
 import { megabytes, numero } from '../format.ts';
-import { RequestCancelled, type AnalysisClient } from '../worker-client.ts';
+import {
+  OCCURRENCE_EVENT,
+  actionFor,
+  readShortcutsEnabled,
+  writeShortcutsEnabled,
+} from '../shortcuts.ts';
+import { RequestCancelled, RequestFailed, type AnalysisClient } from '../worker-client.ts';
 import { t } from '../strings.ts';
-import { Detalhe } from './Detalhe.tsx';
-import { ListaPepitas } from './ListaPepitas.tsx';
+import { Atalhos } from './Atalhos.tsx';
+import { Detalhe, type Aba } from './Detalhe.tsx';
+import { ListaPepitas, visibleNuggets } from './ListaPepitas.tsx';
 import { Peneira } from './Peneira.tsx';
 import { Perfil } from './Perfil.tsx';
 
@@ -28,6 +35,10 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
   const [total, setTotal] = useState<number | null>(null);
   const [histogram, setHistogram] = useState<Histogram | null>(null);
   const [failed, setFailed] = useState(false);
+  const [regexProblem, setRegexProblem] = useState<'prazo' | null>(null);
+  const [aba, setAba] = useState<Aba>('resumo');
+  const [ajuda, setAjuda] = useState(false);
+  const [atalhos, setAtalhos] = useState(readShortcutsEnabled);
 
   const summary = analysis.summary;
   const axis = summary.firstTimeMs !== null && summary.lastTimeMs !== null ? 'time' : 'order';
@@ -36,9 +47,12 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
   useEffect(() => {
     let alive = true;
     const fail = (error: unknown): void => {
-      if (alive && !(error instanceof RequestCancelled)) setFailed(true);
+      if (!alive || error instanceof RequestCancelled) return;
+      if (error instanceof RequestFailed && error.code === 'GAR-RGX-002') setRegexProblem('prazo');
+      else setFailed(true);
     };
     setFailed(false);
+    setRegexProblem(null);
     client
       .query(filter)
       .then((reply) => {
@@ -58,8 +72,49 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
     };
   }, [client, id]);
 
+  const withoutNuggetFilter = { ...filter, nuggetId: null };
+  const rows = visibleNuggets(
+    analysis.nuggets,
+    counts,
+    !isEmptyFilter(withoutNuggetFilter),
+    filter.nuggetId,
+  );
+
+  // Os atalhos leem o estado mais recente por ref, para o ouvinte não precisar ser refeito.
+  const live = useRef({ rows, filter, atalhos });
+  live.current = { rows, filter, atalhos };
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (!live.current.atalhos) return;
+      const action = actionFor(event);
+      if (!action) return;
+      event.preventDefault();
+      const { rows: shown, filter: current } = live.current;
+      if (action.kind === 'focus-search') {
+        document.getElementById('campo-texto')?.focus();
+      } else if (action.kind === 'nugget') {
+        if (shown.length === 0) return;
+        const at = shown.findIndex((row) => row.nugget.id === current.nuggetId);
+        const next = at === -1 ? (action.delta === 1 ? 0 : shown.length - 1) : at + action.delta;
+        const target = shown[Math.max(0, Math.min(shown.length - 1, next))];
+        if (target) setFilter({ ...current, nuggetId: target.nugget.id });
+      } else if (action.kind === 'open') {
+        setAba('ocorrencias');
+        window.setTimeout(() => document.querySelector<HTMLElement>('.virtual')?.focus(), 50);
+      } else if (action.kind === 'occurrence') {
+        window.dispatchEvent(new CustomEvent(OCCURRENCE_EVENT, { detail: action.delta }));
+      } else if (action.kind === 'filters') {
+        document.querySelector<HTMLElement>('.nivel')?.focus();
+      } else {
+        setAjuda(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const nugget = analysis.nuggets.find((n) => n.id === filter.nuggetId) ?? null;
-  const withoutNugget = { ...filter, nuggetId: null };
 
   return (
     <div class="bateia">
@@ -73,10 +128,25 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
             {total !== null && !isEmptyFilter(filter) ? ` · ${numero.format(total)} no filtro` : ''}
           </p>
         </div>
-        <button type="button" class="botao" onClick={onReset}>
-          {t.novaJazida}
-        </button>
+        <div class="bateia-acoes">
+          <button type="button" class="botao-discreto" onClick={() => setAjuda(true)}>
+            {t.atalhosBotao} (?)
+          </button>
+          <button type="button" class="botao" onClick={onReset}>
+            {t.novaJazida}
+          </button>
+        </div>
       </header>
+      {ajuda ? (
+        <Atalhos
+          enabled={atalhos}
+          onToggle={(value) => {
+            setAtalhos(value);
+            writeShortcutsEnabled(value);
+          }}
+          onClose={() => setAjuda(false)}
+        />
+      ) : null}
 
       {failed ? (
         <p class="erro" role="alert">
@@ -99,12 +169,13 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
             severityCounts={summary.severityCounts}
             onChange={setFilter}
             textInputId="campo-texto"
+            regexProblem={regexProblem}
           />
           <ListaPepitas
             nuggets={analysis.nuggets}
             counts={counts}
             selectedId={filter.nuggetId}
-            filtered={!isEmptyFilter(withoutNugget)}
+            filtered={!isEmptyFilter(withoutNuggetFilter)}
             onSelect={(nuggetId) => setFilter({ ...filter, nuggetId })}
           />
           {analysis.nuggets.length < summary.nuggetCount ? (
@@ -117,6 +188,8 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
           nugget={nugget}
           filter={filter}
           filterId={id}
+          aba={aba}
+          onAba={setAba}
         />
       </div>
     </div>

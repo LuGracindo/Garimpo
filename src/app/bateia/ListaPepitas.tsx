@@ -13,13 +13,23 @@ interface Props {
   onSelect: (id: number | null) => void;
 }
 
-export function ListaPepitas({ nuggets, counts, selectedId, filtered, onSelect }: Props) {
-  const rows = nuggets
+/** As pepitas que aparecem na lista sob o filtro atual, com a contagem de cada uma. */
+export function visibleNuggets(
+  nuggets: NuggetView[],
+  counts: Map<number, number> | null,
+  filtered: boolean,
+  selectedId: number | null,
+): { nugget: NuggetView; count: number }[] {
+  return nuggets
     .map((nugget) => ({
       nugget,
       count: counts && filtered ? (counts.get(nugget.id) ?? 0) : nugget.count,
     }))
     .filter((row) => !filtered || row.count > 0 || row.nugget.id === selectedId);
+}
+
+export function ListaPepitas({ nuggets, counts, selectedId, filtered, onSelect }: Props) {
+  const rows = visibleNuggets(nuggets, counts, filtered, selectedId);
 
   return (
     <section class="lista-pepitas" aria-labelledby="titulo-pepitas">

@@ -3,13 +3,18 @@
 // Tipagem mínima do escopo global do Worker, para não misturar as libs DOM e WebWorker.
 
 import {
+  MAX_FILE_BYTES,
   PROTOCOL_VERSION,
   isUiToWorker,
+  type ErrorCode,
   type OpenOptions,
   type UiToWorker,
   type WorkerToUi,
 } from '../shared/protocol.ts';
 import { analyzeBlob } from './analyze-file.ts';
+import { createScriptUrl } from '../shared/trusted.ts';
+import regexWorkerUrl from './regex-worker.ts?worker&url';
+import { createWorkerScanner, RegexInvalid, RegexTimeout, type WorkerLike } from './regex-scan.ts';
 import { Session, Superseded } from './session.ts';
 
 const scope = self as unknown as {
@@ -26,6 +31,35 @@ function post(message: WorkerToUi): void {
   scope.postMessage(message);
 }
 
+const BINARY_SAMPLE_BYTES = 64 * 1024;
+
+function makeRegexWorker(): WorkerLike {
+  return new Worker(createScriptUrl(regexWorkerUrl), { type: 'module' }) as unknown as WorkerLike;
+}
+
+/** Traduz uma falha em código e texto. SEG-19: nunca inclui conteúdo do arquivo. */
+function describeError(
+  error: unknown,
+  fallback: { code: ErrorCode; message: string },
+): { code: ErrorCode; message: string; details: string } {
+  const details = error instanceof Error ? error.name : 'Erro desconhecido';
+  if (error instanceof RegexInvalid) {
+    return { code: 'GAR-RGX-001', message: 'Expressão regular inválida.', details };
+  }
+  if (error instanceof RegexTimeout) {
+    return { code: 'GAR-RGX-002', message: 'A expressão regular passou do prazo de 2 s.', details };
+  }
+  if (error instanceof RangeError) {
+    return { code: 'GAR-MEM-001', message: 'Memória insuficiente para este arquivo.', details };
+  }
+  return { ...fallback, details };
+}
+
+async function looksBinary(file: Blob): Promise<boolean> {
+  const sample = new Uint8Array(await file.slice(0, BINARY_SAMPLE_BYTES).arrayBuffer());
+  return sample.includes(0);
+}
+
 async function runOpen(requestId: number, file: Blob, options: OpenOptions): Promise<void> {
   if (active) active.cancelled = true;
   session?.dispose();
@@ -36,6 +70,29 @@ async function runOpen(requestId: number, file: Blob, options: OpenOptions): Pro
   const startedAt = performance.now();
 
   try {
+    if (file.size > MAX_FILE_BYTES) {
+      post({
+        type: 'error',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        code: 'GAR-LIM-001',
+        message: 'Arquivo acima do limite de tamanho.',
+        details: 'limite',
+      });
+      return;
+    }
+    if (await looksBinary(file)) {
+      post({
+        type: 'error',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        code: 'GAR-BIN-001',
+        message: 'O arquivo parece binário.',
+        details: 'binario',
+      });
+      return;
+    }
+
     const outcome = await analyzeBlob(file, {
       blockSize: options.blockSize,
       profile: options.profile,
@@ -67,7 +124,12 @@ async function runOpen(requestId: number, file: Blob, options: OpenOptions): Pro
       return;
     }
 
-    session = new Session(file, outcome.analyzer, outcome.result);
+    session = new Session(
+      file,
+      outcome.analyzer,
+      outcome.result,
+      createWorkerScanner(file, makeRegexWorker),
+    );
     post({
       type: 'ready',
       requestId,
@@ -79,14 +141,11 @@ async function runOpen(requestId: number, file: Blob, options: OpenOptions): Pro
       analysis: outcome.result,
     });
   } catch (error) {
-    // SEG-19: só o nome do erro, nunca conteúdo do arquivo.
     post({
       type: 'error',
       requestId,
       protocolVersion: PROTOCOL_VERSION,
-      code: 'GAR-IO-001',
-      message: 'Não foi possível ler o arquivo.',
-      details: error instanceof Error ? error.name : 'Erro desconhecido',
+      ...describeError(error, { code: 'GAR-IO-001', message: 'Não foi possível ler o arquivo.' }),
     });
   } finally {
     if (active === job) active = null;
@@ -132,9 +191,10 @@ async function runQuery(message: Exclude<UiToWorker, { type: 'open' | 'cancel' }
       type: 'error',
       requestId,
       protocolVersion: PROTOCOL_VERSION,
-      code: 'GAR-IO-001',
-      message: 'Não foi possível consultar o arquivo.',
-      details: error instanceof Error ? error.name : 'Erro desconhecido',
+      ...describeError(error, {
+        code: 'GAR-IO-001',
+        message: 'Não foi possível consultar o arquivo.',
+      }),
     });
   }
 }

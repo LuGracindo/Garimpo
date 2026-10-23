@@ -1,8 +1,7 @@
-// Criação do Worker compatível com Trusted Types (CSP: require-trusted-types-for 'script').
-// Com Trusted Types ativo, `new Worker(url)` exige um TrustedScriptURL; a política abaixo só
-// aceita URLs da mesma origem. A política se chama "garimpo-worker" e a CSP permite só esse nome.
+// Cliente do Worker de análise: abertura do arquivo e consultas com promessas.
 
 import workerUrl from '../worker/worker.ts?worker&url';
+import { createScriptUrl } from '../shared/trusted.ts';
 import type { ContextLine } from '../core/context.ts';
 import type { Filter } from '../core/filter.ts';
 import type { Histogram } from '../core/histogram.ts';
@@ -15,29 +14,6 @@ import {
   type UiToWorker,
   type WorkerToUi,
 } from '../shared/protocol.ts';
-
-interface TrustedTypesApi {
-  createPolicy(
-    name: string,
-    rules: { createScriptURL: (input: string) => string },
-  ): { createScriptURL(input: string): unknown };
-}
-
-function createScriptUrl(url: string): string {
-  const api = (window as unknown as { trustedTypes?: TrustedTypesApi }).trustedTypes;
-  if (!api) return url;
-
-  const policy = api.createPolicy('garimpo-worker', {
-    createScriptURL: (input) => {
-      const resolved = new URL(input, window.location.href);
-      if (resolved.origin !== window.location.origin) {
-        throw new TypeError('URL de Worker fora da origem do aplicativo.');
-      }
-      return resolved.href;
-    },
-  });
-  return policy.createScriptURL(url) as unknown as string;
-}
 
 export interface OpenChoices {
   profile?: ProfileId;
@@ -53,6 +29,16 @@ export interface OccurrencesReply {
   total: number;
   start: number;
   rows: OccurrenceRowMessage[];
+}
+
+/** O Worker respondeu com erro: `code` diz qual (ex.: GAR-RGX-002, regex acima do prazo). */
+export class RequestFailed extends Error {
+  readonly code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'RequestFailed';
+    this.code = code;
+  }
 }
 
 /** Pedido substituído por outro mais novo, ou descartado: a interface deve ignorar. */
@@ -90,7 +76,7 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
     if (waiting) {
       pending.delete(data.requestId);
       if (data.type === 'cancelled') waiting.reject(new RequestCancelled());
-      else if (data.type === 'error') waiting.reject(new Error(data.message));
+      else if (data.type === 'error') waiting.reject(new RequestFailed(data.code, data.message));
       else waiting.resolve(data);
       return;
     }

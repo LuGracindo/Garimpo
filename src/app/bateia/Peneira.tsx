@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { EMPTY_FILTER, MAX_TEXT_LENGTH, isEmptyFilter, type Filter } from '../../core/filter.ts';
+import { compilePattern, hasNestedQuantifier } from '../../core/regex.ts';
 import { SEVERITIES, type Severity } from '../../core/types.ts';
 import { formatAxis, numero } from '../format.ts';
 import { t } from '../strings.ts';
@@ -12,11 +13,20 @@ interface Props {
   severityCounts: Record<Severity, number>;
   onChange: (filter: Filter) => void;
   textInputId: string;
+  /** Falha da última busca por regex vinda do Worker (prazo estourado). */
+  regexProblem: 'prazo' | null;
 }
 
 const TEXT_DEBOUNCE_MS = 300;
 
-export function Peneira({ filter, axis, severityCounts, onChange, textInputId }: Props) {
+export function Peneira({
+  filter,
+  axis,
+  severityCounts,
+  onChange,
+  textInputId,
+  regexProblem,
+}: Props) {
   const [text, setText] = useState(filter.text);
 
   // Mantém o campo em sincronia quando o filtro é limpo por fora.
@@ -24,11 +34,16 @@ export function Peneira({ filter, axis, severityCounts, onChange, textInputId }:
     setText(filter.text);
   }, [filter.text]);
 
+  const syntaxError = filter.regex && text !== '' && !compilePattern(text, filter.caseSensitive).ok;
+
   useEffect(() => {
     if (text === filter.text) return undefined;
+    // Regex com erro de sintaxe nem chega ao Worker: o aviso aparece aqui, na hora.
+    if (filter.regex && text !== '' && !compilePattern(text, filter.caseSensitive).ok)
+      return undefined;
     const timer = window.setTimeout(() => onChange({ ...filter, text }), TEXT_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [text]);
+  }, [text, filter.regex, filter.caseSensitive]);
 
   const toggleLevel = (level: Severity): void => {
     const has = filter.levels.includes(level);
@@ -89,6 +104,25 @@ export function Peneira({ filter, axis, severityCounts, onChange, textInputId }:
           />
           <span>{t.diferenciarCaixa}</span>
         </label>
+        <label class="caixa">
+          <input
+            type="checkbox"
+            checked={filter.regex}
+            onChange={(event) => onChange({ ...filter, regex: event.currentTarget.checked })}
+          />
+          <span>{t.regexRotulo}</span>
+        </label>
+        {syntaxError ? (
+          <p class="erro" role="alert">
+            {t.regexInvalida}
+          </p>
+        ) : regexProblem === 'prazo' && filter.regex ? (
+          <p class="erro" role="alert">
+            {t.regexPrazo}
+          </p>
+        ) : filter.regex && hasNestedQuantifier(text) ? (
+          <p class="nota">{t.regexAviso}</p>
+        ) : null}
       </div>
 
       {hasRange ? (

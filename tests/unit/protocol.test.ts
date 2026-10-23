@@ -96,6 +96,7 @@ describe('protocolo UI e Worker (@SEG-08)', () => {
       nuggetId: null,
       text: 'x',
       caseSensitive: false,
+      regex: false,
     };
     expect(isUiToWorker({ type: 'query', filter, ...base })).toBe(true);
     expect(isUiToWorker({ type: 'histogram', filter, ...base })).toBe(true);

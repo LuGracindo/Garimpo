@@ -11,6 +11,7 @@ import { TextScanner } from '../core/textsearch.ts';
 import { SEVERITIES } from '../core/types.ts';
 import type { OccurrenceRowMessage } from '../shared/protocol.ts';
 import { readAlignedChunks, type BlobLike } from './reader.ts';
+import { createInProcessScanner, type RegexScanner } from './regex-scan.ts';
 
 export const MAX_ROW_TEXT_CHARS = 400;
 const ROW_READ_BYTES = 2048;
@@ -32,8 +33,8 @@ export interface OccurrencesResult {
   rows: OccurrenceRow[];
 }
 
-function textKey(text: string, caseSensitive: boolean): string {
-  return text === '' ? '' : JSON.stringify([text, caseSensitive]);
+function textKey(text: string, caseSensitive: boolean, regex: boolean): string {
+  return text === '' ? '' : JSON.stringify([text, caseSensitive, regex]);
 }
 
 export class Superseded extends Error {
@@ -49,6 +50,7 @@ export class Session {
   private readonly blob: BlobLike;
   private readonly analyzer: Analyzer;
   private readonly topIds: number[];
+  private readonly scanner: RegexScanner;
   private readonly range: HistogramRange;
   private readonly matchCache = new Map<string, Uint32Array>();
   private readonly textCache = new Map<string, Uint8Array>();
@@ -57,8 +59,9 @@ export class Session {
   private latestTextKey: string | null = null;
   private disposed = false;
 
-  constructor(blob: BlobLike, analyzer: Analyzer, result: AnalysisResult) {
+  constructor(blob: BlobLike, analyzer: Analyzer, result: AnalysisResult, scanner?: RegexScanner) {
     this.blob = blob;
+    this.scanner = scanner ?? createInProcessScanner(blob);
     this.analyzer = analyzer;
     this.eventCount = analyzer.index.length;
     const summary = result.summary;
@@ -86,27 +89,43 @@ export class Session {
     return new Uint8Array(await this.blob.slice(from, to).arrayBuffer());
   }
 
-  /** Um byte por evento: 1 quando o texto aparece em algum ponto do evento. */
-  private async textMatches(text: string, caseSensitive: boolean): Promise<Uint8Array> {
-    const key = textKey(text, caseSensitive);
+  /** Um byte por evento: 1 quando o texto (ou a regex) casa em alguma linha do evento. */
+  private async textMatches(
+    text: string,
+    caseSensitive: boolean,
+    regex: boolean,
+  ): Promise<Uint8Array> {
+    const key = textKey(text, caseSensitive, regex);
     const isCancelled = (): boolean =>
       this.disposed || (this.latestTextKey !== null && this.latestTextKey !== key);
     const cached = this.textCache.get(key);
     if (cached) return cached;
 
     const flags = new Uint8Array(this.eventCount);
-    const scanner = new TextScanner(text, caseSensitive);
     const offsets = this.analyzer.index.offsets;
     const count = this.eventCount;
     let cursor = 0;
+    const mark = (offset: number): void => {
+      // Os acertos chegam em ordem crescente, então o cursor só avança.
+      while (cursor + 1 < count && offsets.at(cursor + 1) <= offset) cursor += 1;
+      if (count > 0 && offsets.at(cursor) <= offset) flags[cursor] = 1;
+    };
 
-    for await (const chunk of readAlignedChunks(this.blob, 4 * 1024 * 1024, isCancelled)) {
-      scanner.scan(chunk.bytes, chunk.startOffset, (offset) => {
-        // Os acertos chegam em ordem crescente, então o cursor só avança.
-        while (cursor + 1 < count && offsets.at(cursor + 1) <= offset) cursor += 1;
-        if (count > 0 && offsets.at(cursor) <= offset) flags[cursor] = 1;
-      });
-      if (isCancelled()) throw new Superseded();
+    if (regex) {
+      await this.scanner.scan(
+        text,
+        caseSensitive,
+        (hits) => {
+          for (const offset of hits) mark(offset);
+        },
+        isCancelled,
+      );
+    } else {
+      const scanner = new TextScanner(text, caseSensitive);
+      for await (const chunk of readAlignedChunks(this.blob, 4 * 1024 * 1024, isCancelled)) {
+        scanner.scan(chunk.bytes, chunk.startOffset, mark);
+        if (isCancelled()) throw new Superseded();
+      }
     }
     if (isCancelled()) throw new Superseded();
 
@@ -129,7 +148,9 @@ export class Session {
 
     const work = (async (): Promise<Uint32Array> => {
       const flags =
-        filter.text === '' ? null : await this.textMatches(filter.text, filter.caseSensitive);
+        filter.text === ''
+          ? null
+          : await this.textMatches(filter.text, filter.caseSensitive, filter.regex);
       const selected = selectEvents(this.analyzer.index, filter, this.axis, flags);
       this.matchCache.set(key, selected);
       while (this.matchCache.size > MATCH_CACHE_SIZE) {
@@ -148,7 +169,7 @@ export class Session {
   }
 
   async query(filter: Filter): Promise<QueryResult> {
-    this.latestTextKey = textKey(filter.text, filter.caseSensitive);
+    this.latestTextKey = textKey(filter.text, filter.caseSensitive, filter.regex);
     // A contagem por pepita ignora a escolha de uma pepita: mostra o que cada uma teria.
     const open = { ...filter, nuggetId: null };
     const selected = await this.matches(open);

@@ -52,6 +52,37 @@ function Selo({ state }: { state: SealState }) {
   );
 }
 
+const ERROS: Record<string, { titulo: string; texto: string }> = {
+  'GAR-BIN-001': { titulo: t.erroBinarioTitulo, texto: t.erroBinarioTexto },
+  'GAR-LIM-001': { titulo: t.erroLimiteTitulo, texto: t.erroLimiteTexto },
+  'GAR-MEM-001': { titulo: t.erroMemoriaTitulo, texto: t.erroMemoriaTexto },
+};
+
+/** Estado de erro: texto, ação sugerida e foco inicial no título (SDD 9.3). */
+function Erro({ code, details, onReset }: { code: string; details: string; onReset: () => void }) {
+  const titulo = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    titulo.current?.focus();
+  }, []);
+  const known = ERROS[code];
+  return (
+    <section class="cartao" role="alert" aria-labelledby="titulo-erro">
+      <h2 class="cartao-titulo" id="titulo-erro" ref={titulo} tabIndex={-1}>
+        {known ? known.titulo : t.erroInterno}
+      </h2>
+      {known ? <p class="nota">{known.texto}</p> : null}
+      <p class="arquivo">
+        {code} · {details}
+      </p>
+      <div>
+        <button type="button" class="botao" onClick={onReset}>
+          {known ? t.tentarOutro : t.novaJazida}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const [seal, setSeal] = useState<SealState>('testando');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -267,17 +298,7 @@ export function App() {
                 </div>
               </section>
             ) : phase.kind === 'error' ? (
-              <section class="cartao" role="alert">
-                <p class="erro">{t.erroInterno}</p>
-                <p class="arquivo">
-                  {phase.code} · {phase.details}
-                </p>
-                <div>
-                  <button type="button" class="botao" onClick={reset}>
-                    {t.novaJazida}
-                  </button>
-                </div>
-              </section>
+              <Erro code={phase.code} details={phase.details} onReset={reset} />
             ) : (
               <section
                 class={dragging ? 'soltar soltar-ativa' : 'soltar'}

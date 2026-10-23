@@ -46,3 +46,12 @@ Fonte: SDD, seção 16.1, e seção 19 (decisões de 22 de outubro de 2026). Cad
 7. **Sedimento** = todas as linhas que passam no filtro, na ordem do arquivo, sem restringir à pepita; **Ocorrências** = as da pepita escolhida.
 8. **Estilo dinâmico** na lista virtual (altura e deslocamento) também usa `element.style` via objeto, permitido pela CSP.
 9. **Verificação**: a interface foi exercitada num Chromium real com a CSP de produção (arquivos de 0,6 MB e 40 MB): sem violações além da sonda do selo; com 40 MB, 26 linhas no DOM durante a rolagem.
+
+## Ajustes surgidos na implementação do M2 (parte 2)
+
+1. **Regex isolada**: a busca por regex roda num Worker próprio (`regex-worker.ts`), criado pelo Worker de análise com a mesma política Trusted Types. O Worker devolve os deslocamentos das linhas que casam e dá um sinal de vida a cada 256 linhas; se ficar 2 s sem sinal (regex catastrófica), é derrubado (`terminate`) e a consulta responde `GAR-RGX-002`. Varreduras longas mas ativas não estouram o prazo, porque cada sinal o renova.
+2. **Validação antes do Worker**: padrão vazio, acima de 500 caracteres ou com erro de sintaxe nem sai da interface (`GAR-RGX-001` só como reserva). Um aviso heurístico aparece para quantificadores aninhados como `(a+)+`; a proteção real é o prazo.
+3. **Escopo da regex**: cada linha é testada separadamente (linhas acima de 100.000 caracteres são testadas só até esse tamanho), sem as flags `g` e `y`. Um acerto em qualquer linha marca o evento inteiro, como na busca literal.
+4. **Atalhos** seguem o SDD 9.4. Valem só fora de campos de texto e, para `Enter`, fora de botões e listas. A preferência de desligar fica em `localStorage` (opcional, com tratamento de falha). O `e` (exportar laudo) entra no M3.
+5. **Estados**: binário = ao menos um byte nulo nos primeiros 64 KB (logs em UTF-16 caem aqui e a mensagem orienta a converter); limite = 2 GB; memória = `RangeError`. Cada um tem texto, ação e foco inicial no título.
+6. **Trusted Types compartilhado**: a criação da política saiu para `src/shared/trusted.ts`, usada pela página e pelo Worker de análise (uma política por contexto, em cache).

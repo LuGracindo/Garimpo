@@ -15,6 +15,8 @@ export interface Filter {
   /** Texto literal procurado nas linhas do evento. Vazio significa sem busca. */
   text: string;
   caseSensitive: boolean;
+  /** true quando `text` é uma expressão regular (executada num Worker isolado, com prazo). */
+  regex: boolean;
 }
 
 export const EMPTY_FILTER: Filter = {
@@ -24,6 +26,7 @@ export const EMPTY_FILTER: Filter = {
   nuggetId: null,
   text: '',
   caseSensitive: false,
+  regex: false,
 };
 
 /** Chave canônica: filtros equivalentes geram a mesma chave. */
@@ -38,6 +41,7 @@ export function filterKey(filter: Filter): string {
     filter.nuggetId,
     filter.text,
     filter.text === '' ? false : filter.caseSensitive,
+    filter.text === '' ? false : filter.regex,
   ]);
 }
 
@@ -65,5 +69,5 @@ export function isFilter(value: unknown): value is Filter {
   }
   const text = v['text'];
   if (typeof text !== 'string' || text.length > MAX_TEXT_LENGTH) return false;
-  return typeof v['caseSensitive'] === 'boolean';
+  return typeof v['caseSensitive'] === 'boolean' && typeof v['regex'] === 'boolean';
 }

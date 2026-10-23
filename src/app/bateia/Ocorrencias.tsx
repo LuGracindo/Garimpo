@@ -6,6 +6,7 @@ import type { Filter } from '../../core/filter.ts';
 import { pageOf, visibleWindow } from '../../core/virtual.ts';
 import type { OccurrenceRowMessage } from '../../shared/protocol.ts';
 import { formatTime, numero } from '../format.ts';
+import { OCCURRENCE_EVENT } from '../shortcuts.ts';
 import { RequestCancelled, type AnalysisClient } from '../worker-client.ts';
 import { t } from '../strings.ts';
 
@@ -89,6 +90,18 @@ export function Ocorrencias({ client, filter, label, onActive }: Props) {
       el.scrollTop = top + ROW_HEIGHT - el.clientHeight;
     }
   };
+
+  // Atalhos [ e ] chegam por evento da janela, com o passo (−1 ou +1).
+  const latest = useRef({ active, move });
+  latest.current = { active, move };
+  useEffect(() => {
+    const onStep = (event: Event): void => {
+      const delta = (event as CustomEvent<number>).detail;
+      latest.current.move(latest.current.active + delta);
+    };
+    window.addEventListener(OCCURRENCE_EVENT, onStep);
+    return () => window.removeEventListener(OCCURRENCE_EVENT, onStep);
+  }, []);
 
   const onKeyDown = (event: KeyboardEvent): void => {
     const pageRows = Math.max(1, Math.floor(viewport / ROW_HEIGHT) - 1);
