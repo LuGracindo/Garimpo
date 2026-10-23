@@ -11,7 +11,7 @@ permissions:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    steps:      
+    steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -27,7 +27,5 @@ jobs:
       - run: npm run build
       - run: npm run check:dist
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e      
+      - run: npm run e2e
       - run: npm audit --audit-level=high
-      # TODO (SEG-17): adicionar varredura de segredos (ex.: gitleaks) e OSV.
-      # TODO (marco M4): e2e (Playwright), acessibilidade (axe) e benchmarks na CI.
