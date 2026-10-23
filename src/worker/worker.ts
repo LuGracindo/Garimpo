@@ -11,7 +11,8 @@ import {
   type UiToWorker,
   type WorkerToUi,
 } from '../shared/protocol.ts';
-import { analyzeBlob } from './analyze-file.ts';
+import { analyzeBlob, previewBlob } from './analyze-file.ts';
+import type { CustomProfileSpec } from '../core/custom-profile.ts';
 import { createScriptUrl } from '../shared/trusted.ts';
 import regexWorkerUrl from './regex-worker.ts?worker&url';
 import { createWorkerScanner, RegexInvalid, RegexTimeout, type WorkerLike } from './regex-scan.ts';
@@ -96,6 +97,7 @@ async function runOpen(requestId: number, file: Blob, options: OpenOptions): Pro
     const outcome = await analyzeBlob(file, {
       blockSize: options.blockSize,
       profile: options.profile,
+      custom: options.custom,
       mode: options.mode,
       isCancelled: () => job.cancelled,
       onProgress: (p) =>
@@ -152,7 +154,9 @@ async function runOpen(requestId: number, file: Blob, options: OpenOptions): Pro
   }
 }
 
-async function runQuery(message: Exclude<UiToWorker, { type: 'open' | 'cancel' }>): Promise<void> {
+async function runQuery(
+  message: Exclude<UiToWorker, { type: 'open' | 'cancel' | 'preview-profile' }>,
+): Promise<void> {
   const requestId = message.requestId;
   const kind = message.type;
   latest.set(kind, requestId);
@@ -173,9 +177,20 @@ async function runQuery(message: Exclude<UiToWorker, { type: 'open' | 'cancel' }
     } else if (message.type === 'occurrences') {
       const r = await current.occurrences(message.filter, message.start, message.count);
       reply = { type: 'occurrences-result', requestId, protocolVersion: PROTOCOL_VERSION, ...r };
-    } else {
+    } else if (message.type === 'context') {
       const lines = await current.context(message.event, message.before, message.after);
       reply = { type: 'context-result', requestId, protocolVersion: PROTOCOL_VERSION, lines };
+    } else if (message.type === 'fingerprint') {
+      const fingerprint = await current.fingerprint(stale);
+      reply = {
+        type: 'fingerprint-result',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        fingerprint,
+      };
+    } else {
+      const scan = await current.lacreScan(message.types, stale);
+      reply = { type: 'lacre-scan-result', requestId, protocolVersion: PROTOCOL_VERSION, ...scan };
     }
     if (stale() || session !== current) {
       post({ type: 'cancelled', requestId, protocolVersion: PROTOCOL_VERSION });
@@ -199,6 +214,20 @@ async function runQuery(message: Exclude<UiToWorker, { type: 'open' | 'cancel' }
   }
 }
 
+async function runPreview(requestId: number, file: Blob, spec: CustomProfileSpec): Promise<void> {
+  try {
+    const preview = await previewBlob(file, spec);
+    post({ type: 'preview-result', requestId, protocolVersion: PROTOCOL_VERSION, preview });
+  } catch (error) {
+    post({
+      type: 'error',
+      requestId,
+      protocolVersion: PROTOCOL_VERSION,
+      ...describeError(error, { code: 'GAR-IO-001', message: 'Não foi possível testar o perfil.' }),
+    });
+  }
+}
+
 scope.onmessage = (event) => {
   const message = event.data;
 
@@ -216,6 +245,11 @@ scope.onmessage = (event) => {
 
   if (message.type === 'cancel') {
     if (active && active.requestId === message.requestId) active.cancelled = true;
+    return;
+  }
+
+  if (message.type === 'preview-profile') {
+    void runPreview(message.requestId, message.file, message.spec);
     return;
   }
 

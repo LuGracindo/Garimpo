@@ -9,9 +9,13 @@ export function severityRank(severity: Severity): number {
   return SEVERITIES.indexOf(severity);
 }
 
-export type ProfileId = 'iso-level' | 'jsonl' | 'http-combined' | 'lvl-dash';
+export type BuiltinProfileId = 'iso-level' | 'jsonl' | 'http-combined' | 'lvl-dash';
 
-export const PROFILE_IDS: readonly ProfileId[] = [
+/** `custom` é o perfil montado pela pessoa a partir de uma regex (ver custom-profile.ts). */
+export type ProfileId = BuiltinProfileId | 'custom';
+
+/** Perfis embutidos, os únicos considerados na detecção automática. */
+export const PROFILE_IDS: readonly BuiltinProfileId[] = [
   'iso-level',
   'jsonl',
   'http-combined',

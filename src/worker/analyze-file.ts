@@ -3,7 +3,13 @@
 
 import { detectProfile, type Candidate } from '../core/detect.ts';
 import { Analyzer, type AnalysisResult } from '../core/analyzer.ts';
-import type { NormalizationMode, ProfileId } from '../core/types.ts';
+import {
+  buildCustomProfile,
+  previewProfile,
+  type CustomProfileSpec,
+  type Preview,
+} from '../core/custom-profile.ts';
+import type { NormalizationMode, Profile, ProfileId } from '../core/types.ts';
 import { readAlignedChunks, type BlobLike } from './reader.ts';
 
 export const SAMPLE_BYTES = 1024 * 1024;
@@ -12,6 +18,8 @@ const MAX_SAMPLE_LINE_CHARS = 4096;
 export interface AnalyzeOptions {
   blockSize: number;
   profile?: ProfileId;
+  /** Especificação do perfil `custom`; quando presente, vale no lugar de `profile`. */
+  custom?: CustomProfileSpec;
   mode?: NormalizationMode;
   onProgress?: (progress: { bytesRead: number; totalBytes: number; lines: number }) => void;
   isCancelled?: () => boolean;
@@ -52,11 +60,22 @@ export async function analyzeBlob(
   const interval = options.progressIntervalMs ?? 200;
 
   let profile = options.profile;
+  let impl: Profile | undefined;
+  if (options.custom) {
+    const built = buildCustomProfile(options.custom);
+    if (!built.ok) throw new TypeError(`Perfil personalizado inválido: ${built.problem}`);
+    profile = 'custom';
+    impl = built.profile;
+  }
   let source: 'auto' | 'manual' = 'manual';
   let confidence: number | null = null;
 
   if (blob.size === 0) {
-    const analyzer = new Analyzer({ profile: profile ?? 'iso-level', mode: options.mode });
+    const analyzer = new Analyzer({
+      profile: profile ?? 'iso-level',
+      profileImpl: impl,
+      mode: options.mode,
+    });
     return { kind: 'ready', result: analyzer.finish(), bytesRead: 0, analyzer };
   }
 
@@ -73,6 +92,7 @@ export async function analyzeBlob(
 
   const analyzer = new Analyzer({
     profile,
+    profileImpl: impl,
     profileSource: source,
     confidence,
     mode: options.mode,
@@ -92,4 +112,11 @@ export async function analyzeBlob(
 
   if (isCancelled()) return { kind: 'cancelled' };
   return { kind: 'ready', result: analyzer.finish(), bytesRead, analyzer };
+}
+
+/** Testa um perfil personalizado nas primeiras linhas do arquivo (sem analisar o resto). */
+export async function previewBlob(blob: BlobLike, spec: CustomProfileSpec): Promise<Preview> {
+  const built = buildCustomProfile(spec);
+  if (!built.ok) throw new TypeError(`Perfil personalizado inválido: ${built.problem}`);
+  return previewProfile(built.profile, await readSample(blob));
 }

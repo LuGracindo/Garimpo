@@ -10,6 +10,7 @@ import {
   SEVERITIES,
   severityRank,
   type NormalizationMode,
+  type Profile,
   type ProfileId,
   type Severity,
 } from './types.ts';
@@ -99,6 +100,8 @@ export function emptySeverityCounts(): Record<Severity, number> {
 
 export interface AnalyzerOptions {
   profile: ProfileId;
+  /** Implementação do perfil `custom`; obrigatória quando `profile` é 'custom'. */
+  profileImpl?: Profile;
   profileSource?: 'auto' | 'manual';
   confidence?: number | null;
   mode?: NormalizationMode;
@@ -190,8 +193,11 @@ export class Analyzer {
     this.weights = options.weights ?? DEFAULT_WEIGHTS;
     this.maxNuggets = options.maxNuggets ?? DEFAULT_MAX_NUGGETS;
     this.topNuggets = options.topNuggets ?? DEFAULT_TOP_NUGGETS;
+    const impl =
+      options.profileImpl ?? (options.profile === 'custom' ? null : getProfile(options.profile));
+    if (!impl) throw new TypeError('Perfil personalizado sem implementação.');
     this.segmenter = new Segmenter(
-      getProfile(options.profile),
+      impl,
       (event) => this.onEvent(event),
       options.limits ?? DEFAULT_LIMITS,
     );

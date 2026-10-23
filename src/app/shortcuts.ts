@@ -42,6 +42,7 @@ export type ShortcutAction =
   | { kind: 'open' }
   | { kind: 'occurrence'; delta: 1 | -1 }
   | { kind: 'filters' }
+  | { kind: 'laudo' }
   | { kind: 'help' };
 
 /** Traduz a tecla em ação, ou null quando não é atalho (ou não vale neste foco). */
@@ -69,6 +70,8 @@ export function actionFor(event: {
       return { kind: 'occurrence', delta: -1 };
     case 'f':
       return { kind: 'filters' };
+    case 'e':
+      return { kind: 'laudo' };
     case '?':
       return { kind: 'help' };
     default:

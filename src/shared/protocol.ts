@@ -3,7 +3,10 @@
 
 import type { AnalysisResult } from '../core/analyzer.ts';
 import type { ContextLine } from '../core/context.ts';
+import type { FingerprintInfo } from '../core/laudo.ts';
+import { isCustomSpec, type CustomProfileSpec, type Preview } from '../core/custom-profile.ts';
 import { isFilter, type Filter } from '../core/filter.ts';
+import { LACRE_TYPES, isLacreType, type LacreType } from '../core/lacre.ts';
 import type { Histogram } from '../core/histogram.ts';
 import {
   NORMALIZATION_MODES,
@@ -24,6 +27,8 @@ export interface OpenOptions {
   blockSize: number;
   /** Perfil escolhido pela pessoa. Sem ele, o Worker detecta o formato (RF-10). */
   profile?: ProfileId;
+  /** Perfil montado pela pessoa; vale no lugar de `profile` (que fica `custom`). */
+  custom?: CustomProfileSpec;
   mode?: NormalizationMode;
 }
 
@@ -54,6 +59,9 @@ export type UiToWorker =
   | ({ type: 'histogram'; filter: Filter } & Envelope)
   | ({ type: 'occurrences'; filter: Filter; start: number; count: number } & Envelope)
   | ({ type: 'context'; event: number; before: number; after: number } & Envelope)
+  | ({ type: 'preview-profile'; file: Blob; spec: CustomProfileSpec } & Envelope)
+  | ({ type: 'fingerprint' } & Envelope)
+  | ({ type: 'lacre-scan'; types: LacreType[] } & Envelope)
   | {
       type: 'open';
       requestId: number;
@@ -109,6 +117,13 @@ export type WorkerToUi =
       rows: OccurrenceRowMessage[];
     } & Envelope)
   | ({ type: 'context-result'; lines: ContextLine[] } & Envelope)
+  | ({ type: 'preview-result'; preview: Preview } & Envelope)
+  | ({ type: 'fingerprint-result'; fingerprint: FingerprintInfo } & Envelope)
+  | ({
+      type: 'lacre-scan-result';
+      counts: Record<string, number>;
+      samples: { type: LacreType; antes: string; depois: string }[];
+    } & Envelope)
   | { type: 'cancelled'; requestId: number; protocolVersion: typeof PROTOCOL_VERSION }
   | {
       type: 'error';
@@ -159,6 +174,19 @@ export function isUiToWorker(value: unknown): value is UiToWorker {
     );
   }
 
+  if (value['type'] === 'fingerprint') return true;
+
+  if (value['type'] === 'lacre-scan') {
+    const types = value['types'];
+    return Array.isArray(types) && types.length <= LACRE_TYPES.length && types.every(isLacreType);
+  }
+
+  if (value['type'] === 'preview-profile') {
+    return (
+      typeof Blob !== 'undefined' && value['file'] instanceof Blob && isCustomSpec(value['spec'])
+    );
+  }
+
   if (value['type'] === 'open') {
     if (typeof Blob === 'undefined' || !(value['file'] instanceof Blob)) return false;
     const options = value['options'];
@@ -169,6 +197,8 @@ export function isUiToWorker(value: unknown): value is UiToWorker {
     }
     const profile = options['profile'];
     if (profile !== undefined && !isProfileId(profile)) return false;
+    const custom = options['custom'];
+    if (custom !== undefined && !isCustomSpec(custom)) return false;
     const mode = options['mode'];
     if (mode !== undefined && !isMode(mode)) return false;
     return true;
@@ -177,7 +207,10 @@ export function isUiToWorker(value: unknown): value is UiToWorker {
 }
 
 function isProfileId(value: unknown): value is ProfileId {
-  return typeof value === 'string' && (PROFILE_IDS as readonly string[]).includes(value);
+  return (
+    typeof value === 'string' &&
+    (value === 'custom' || (PROFILE_IDS as readonly string[]).includes(value))
+  );
 }
 
 function isMode(value: unknown): value is NormalizationMode {
@@ -295,6 +328,28 @@ function isContextLine(value: unknown): value is ContextLine {
   );
 }
 
+function isPreview(value: unknown): value is Preview {
+  if (!isRecord(value)) return false;
+  const samples = value['samples'];
+  return (
+    isSafeInt(value['tested']) &&
+    isSafeInt(value['matched']) &&
+    isSafeInt(value['withTime']) &&
+    isSafeInt(value['withLevel']) &&
+    Array.isArray(samples) &&
+    samples.length <= 12 &&
+    samples.every(
+      (sample) =>
+        isRecord(sample) &&
+        typeof sample['line'] === 'string' &&
+        typeof sample['matched'] === 'boolean' &&
+        (sample['timeMs'] === null || typeof sample['timeMs'] === 'number') &&
+        (sample['level'] === null || SEVERITIES.includes(sample['level'] as Severity)) &&
+        typeof sample['message'] === 'string',
+    )
+  );
+}
+
 const WORKER_TYPES = new Set([
   'progress',
   'ready',
@@ -303,6 +358,9 @@ const WORKER_TYPES = new Set([
   'histogram-result',
   'occurrences-result',
   'context-result',
+  'preview-result',
+  'fingerprint-result',
+  'lacre-scan-result',
   'cancelled',
   'error',
 ]);
@@ -368,6 +426,37 @@ export function isWorkerToUi(value: unknown): value is WorkerToUi {
         Array.isArray(lines) &&
         lines.length <= 2 * MAX_CONTEXT_LINES + 200 &&
         lines.every(isContextLine)
+      );
+    }
+    case 'preview-result':
+      return isPreview(value['preview']);
+    case 'fingerprint-result': {
+      const fp = value['fingerprint'];
+      return (
+        isRecord(fp) &&
+        typeof fp['metodo'] === 'string' &&
+        isSafeInt(fp['tamanhoBloco']) &&
+        isSafeInt(fp['blocos']) &&
+        isSafeInt(fp['bytes']) &&
+        typeof fp['raiz'] === 'string' &&
+        /^[0-9a-f]{64}$/.test(fp['raiz'])
+      );
+    }
+    case 'lacre-scan-result': {
+      const counts = value['counts'];
+      const samples = value['samples'];
+      return (
+        isRecord(counts) &&
+        Object.entries(counts).every(([k, n]) => isLacreType(k) && isSafeInt(n)) &&
+        Array.isArray(samples) &&
+        samples.length <= LACRE_TYPES.length * 3 &&
+        samples.every(
+          (x) =>
+            isRecord(x) &&
+            isLacreType(x['type']) &&
+            typeof x['antes'] === 'string' &&
+            typeof x['depois'] === 'string',
+        )
       );
     }
     case 'cancelled':

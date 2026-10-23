@@ -1,10 +1,12 @@
 // A bateia: tela de trabalho depois da análise. Perfil no alto; Peneira e pepitas à esquerda;
 // detalhe à direita (SDD 2.5). O filtro é a única fonte de verdade e vai inteiro ao Worker.
 
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AnalysisResult } from '../../core/analyzer.ts';
 import { EMPTY_FILTER, filterKey, isEmptyFilter, type Filter } from '../../core/filter.ts';
+import type { CustomProfileSpec } from '../../core/custom-profile.ts';
 import type { Histogram } from '../../core/histogram.ts';
+import { Lacre, type LacreType } from '../../core/lacre.ts';
 import { megabytes, numero } from '../format.ts';
 import {
   OCCURRENCE_EVENT,
@@ -16,6 +18,7 @@ import { RequestCancelled, RequestFailed, type AnalysisClient } from '../worker-
 import { t } from '../strings.ts';
 import { Atalhos } from './Atalhos.tsx';
 import { Detalhe, type Aba } from './Detalhe.tsx';
+import { LaudoTela } from './Laudo.tsx';
 import { ListaPepitas, visibleNuggets } from './ListaPepitas.tsx';
 import { Peneira } from './Peneira.tsx';
 import { Perfil } from './Perfil.tsx';
@@ -26,10 +29,21 @@ interface Props {
   name: string;
   size: number;
   elapsedMs: number;
+  modifiedAt: number | null;
+  custom: CustomProfileSpec | null;
   onReset: () => void;
 }
 
-export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Props) {
+export function Bateia({
+  client,
+  analysis,
+  name,
+  size,
+  elapsedMs,
+  modifiedAt,
+  custom,
+  onReset,
+}: Props) {
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
   const [counts, setCounts] = useState<Map<number, number> | null>(null);
   const [total, setTotal] = useState<number | null>(null);
@@ -39,6 +53,14 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
   const [aba, setAba] = useState<Aba>('resumo');
   const [ajuda, setAjuda] = useState(false);
   const [atalhos, setAtalhos] = useState(readShortcutsEnabled);
+  const [view, setView] = useState<'bateia' | 'laudo'>('bateia');
+  const [lacreTypes, setLacreTypes] = useState<ReadonlySet<LacreType>>(new Set());
+  const lacreKey = [...lacreTypes].sort().join(',');
+  // Uma instância só para exibição; o laudo usa a sua, para marcadores determinísticos.
+  const mask = useMemo(() => {
+    const lacre = new Lacre(lacreTypes);
+    return (text: string): string => lacre.mask(text);
+  }, [lacreKey]);
 
   const summary = analysis.summary;
   const axis = summary.firstTimeMs !== null && summary.lastTimeMs !== null ? 'time' : 'order';
@@ -83,10 +105,16 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
   // Os atalhos leem o estado mais recente por ref, para o ouvinte não precisar ser refeito.
   const live = useRef({ rows, filter, atalhos });
   live.current = { rows, filter, atalhos };
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (!live.current.atalhos) return;
+      if (viewRef.current === 'laudo') {
+        if (event.key === 'Escape') setView('bateia');
+        return;
+      }
       const action = actionFor(event);
       if (!action) return;
       event.preventDefault();
@@ -104,6 +132,8 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
         window.setTimeout(() => document.querySelector<HTMLElement>('.virtual')?.focus(), 50);
       } else if (action.kind === 'occurrence') {
         window.dispatchEvent(new CustomEvent(OCCURRENCE_EVENT, { detail: action.delta }));
+      } else if (action.kind === 'laudo') {
+        setView('laudo');
       } else if (action.kind === 'filters') {
         document.querySelector<HTMLElement>('.nivel')?.focus();
       } else {
@@ -124,11 +154,14 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
             {numero.format(summary.events)} eventos em {numero.format(summary.lines)} linhas.
           </h2>
           <p class="arquivo">
-            {name} · {megabytes(size)} · {numero.format(Math.round(elapsedMs))} ms
+            {mask(name)} · {megabytes(size)} · {numero.format(Math.round(elapsedMs))} ms
             {total !== null && !isEmptyFilter(filter) ? ` · ${numero.format(total)} no filtro` : ''}
           </p>
         </div>
         <div class="bateia-acoes">
+          <button type="button" class="botao-discreto" onClick={() => setView('laudo')}>
+            {t.exportarLaudo} (e)
+          </button>
           <button type="button" class="botao-discreto" onClick={() => setAjuda(true)}>
             {t.atalhosBotao} (?)
           </button>
@@ -148,50 +181,68 @@ export function Bateia({ client, analysis, name, size, elapsedMs, onReset }: Pro
         />
       ) : null}
 
-      {failed ? (
-        <p class="erro" role="alert">
-          {t.falhaConsulta}
-        </p>
-      ) : null}
-
-      <Perfil
-        histogram={histogram}
-        from={filter.from}
-        to={filter.to}
-        onSelect={(from, to) => setFilter({ ...filter, from, to })}
-      />
-
-      <div class="bateia-corpo">
-        <div class="bateia-esquerda">
-          <Peneira
-            filter={filter}
-            axis={axis}
-            severityCounts={summary.severityCounts}
-            onChange={setFilter}
-            textInputId="campo-texto"
-            regexProblem={regexProblem}
-          />
-          <ListaPepitas
-            nuggets={analysis.nuggets}
-            counts={counts}
-            selectedId={filter.nuggetId}
-            filtered={!isEmptyFilter(withoutNuggetFilter)}
-            onSelect={(nuggetId) => setFilter({ ...filter, nuggetId })}
-          />
-          {analysis.nuggets.length < summary.nuggetCount ? (
-            <p class="nota">{t.pepitasLimite(analysis.nuggets.length, summary.nuggetCount)}</p>
-          ) : null}
-        </div>
-        <Detalhe
+      {view === 'laudo' ? (
+        <LaudoTela
           client={client}
           analysis={analysis}
-          nugget={nugget}
-          filter={filter}
-          filterId={id}
-          aba={aba}
-          onAba={setAba}
+          name={name}
+          size={size}
+          modifiedAt={modifiedAt}
+          custom={custom}
+          lacreTypes={lacreTypes}
+          onLacreTypes={setLacreTypes}
+          onBack={() => setView('bateia')}
         />
-      </div>
+      ) : (
+        <>
+          {failed ? (
+            <p class="erro" role="alert">
+              {t.falhaConsulta}
+            </p>
+          ) : null}
+
+          <Perfil
+            histogram={histogram}
+            from={filter.from}
+            to={filter.to}
+            onSelect={(from, to) => setFilter({ ...filter, from, to })}
+          />
+
+          <div class="bateia-corpo">
+            <div class="bateia-esquerda">
+              <Peneira
+                filter={filter}
+                axis={axis}
+                severityCounts={summary.severityCounts}
+                onChange={setFilter}
+                textInputId="campo-texto"
+                regexProblem={regexProblem}
+              />
+              <ListaPepitas
+                nuggets={analysis.nuggets}
+                counts={counts}
+                selectedId={filter.nuggetId}
+                filtered={!isEmptyFilter(withoutNuggetFilter)}
+                mask={mask}
+                onSelect={(nuggetId) => setFilter({ ...filter, nuggetId })}
+              />
+              {analysis.nuggets.length < summary.nuggetCount ? (
+                <p class="nota">{t.pepitasLimite(analysis.nuggets.length, summary.nuggetCount)}</p>
+              ) : null}
+            </div>
+            <Detalhe
+              client={client}
+              analysis={analysis}
+              nugget={nugget}
+              filter={filter}
+              filterId={id}
+              aba={aba}
+              onAba={setAba}
+              mask={mask}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

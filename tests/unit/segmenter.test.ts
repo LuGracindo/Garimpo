@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getProfile } from '../../src/core/profiles.ts';
 import { Segmenter, type EventRecord } from '../../src/core/segmenter.ts';
-import type { ProfileId } from '../../src/core/types.ts';
+import type { BuiltinProfileId as ProfileId } from '../../src/core/types.ts';
 
 function run(
   profile: ProfileId,

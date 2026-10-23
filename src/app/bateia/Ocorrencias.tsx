@@ -19,9 +19,10 @@ interface Props {
   filter: Filter;
   label: string;
   onActive: (row: OccurrenceRowMessage | null) => void;
+  mask: (text: string) => string;
 }
 
-export function Ocorrencias({ client, filter, label, onActive }: Props) {
+export function Ocorrencias({ client, filter, label, onActive, mask }: Props) {
   const pages = useRef(new Map<number, OccurrenceRowMessage[]>());
   const inflight = useRef(new Set<number>());
   const box = useRef<HTMLDivElement | null>(null);
@@ -156,7 +157,7 @@ export function Ocorrencias({ client, filter, label, onActive }: Props) {
             <span class={`oc-nivel sev-${row.severity.toLowerCase()}`}>
               <span class="sev">{row.severity}</span>
             </span>
-            <span class="oc-texto">{row.text}</span>
+            <span class="oc-texto">{mask(row.text)}</span>
           </>
         ) : (
           <span class="oc-texto nota">{t.carregando}</span>

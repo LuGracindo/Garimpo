@@ -114,6 +114,9 @@ const TOKEN = /\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{20,
 const NUMBER =
   /(?<![\w.])\d+(?:[.,]\d+)?(?=(?:ms|us|µs|ns|s|m|h|d|KB|MB|GB|TB|kb|mb|gb|tb|B|%)\b|\b)/g;
 
+// CPF/CNPJ formatados: sem isso o NUMBER deixaria um grupo de dígitos (ex.: 247) no gabarito.
+const DOCUMENT = /(?<![\w.])(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})(?!\w)/g;
+
 const QUOTED = /"[^"]{0,200}"|(?<!\w)'[^']{0,200}'(?!\w)/g;
 
 const STEPS: readonly Replacer[] = [
@@ -136,7 +139,7 @@ const STEPS: readonly Replacer[] = [
   // 9
   marker(TOKEN, '<TOKEN>'),
   // 10
-  marker(NUMBER, '<N>'),
+  (text, captures) => marker(NUMBER, '<N>')(marker(DOCUMENT, '<DOC>')(text, captures), captures),
   // 11
   marker(QUOTED, '<STR>'),
 ];

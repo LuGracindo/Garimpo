@@ -16,6 +16,7 @@ const LINHAS: [string, string][] = [
   ['Enter', t.atalhoAbrir],
   ['[ / ]', t.atalhoOcorrencia],
   ['f', t.atalhoFiltros],
+  ['e', t.atalhoLaudo],
   ['?', t.atalhoAtalhos],
   ['Esc', t.atalhoEsc],
 ];

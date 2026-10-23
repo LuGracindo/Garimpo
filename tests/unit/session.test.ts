@@ -155,4 +155,29 @@ describe('sessão de consulta (@RF-25, @RF-26, @RF-27)', () => {
       expect(page.rows.length).toBe(3);
     }
   });
+
+  it('impressão digital do arquivo e varredura do Lacre', async () => {
+    const texto =
+      '2026-10-22T10:00:00Z ERROR [t] a.B - falha ana@empresa.com ip 10.1.2.3\n' +
+      '2026-10-22T10:00:01Z INFO [t] a.B - ok bia@empresa.com\n' +
+      '2026-10-22T10:00:02Z INFO [t] a.B - nada sensivel\n';
+    const { session } = await abrir(texto);
+    const fp = await session.fingerprint(() => false);
+    expect(fp.bytes).toBe(new TextEncoder().encode(texto).length);
+    expect(fp.raiz).toMatch(/^[0-9a-f]{64}$/);
+    const scan = await session.lacreScan(['email', 'ipv4'], () => false);
+    expect(scan.counts.email).toBe(2);
+    expect(scan.counts.ipv4).toBe(1);
+    expect(scan.counts.cpf).toBe(0);
+    const amostra = scan.samples.find((x) => x.type === 'email');
+    expect(amostra?.antes).toContain('ana@empresa.com');
+    expect(amostra?.depois).not.toContain('ana@empresa.com');
+    let erro: unknown;
+    try {
+      await session.lacreScan(['email'], () => true);
+    } catch (e) {
+      erro = e;
+    }
+    expect(erro instanceof Superseded).toBe(true);
+  });
 });

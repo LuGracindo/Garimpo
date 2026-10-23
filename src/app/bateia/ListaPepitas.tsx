@@ -11,6 +11,7 @@ interface Props {
   selectedId: number | null;
   filtered: boolean;
   onSelect: (id: number | null) => void;
+  mask: (text: string) => string;
 }
 
 /** As pepitas que aparecem na lista sob o filtro atual, com a contagem de cada uma. */
@@ -28,7 +29,7 @@ export function visibleNuggets(
     .filter((row) => !filtered || row.count > 0 || row.nugget.id === selectedId);
 }
 
-export function ListaPepitas({ nuggets, counts, selectedId, filtered, onSelect }: Props) {
+export function ListaPepitas({ nuggets, counts, selectedId, filtered, onSelect, mask }: Props) {
   const rows = visibleNuggets(nuggets, counts, filtered, selectedId);
 
   return (
@@ -57,7 +58,7 @@ export function ListaPepitas({ nuggets, counts, selectedId, filtered, onSelect }
                     <span class="pepita-id">{nugget.shortId}</span>
                   </span>
                   <span class="pepita-gabarito pepita-linhas">
-                    {nugget.template || '(mensagem vazia)'}
+                    {mask(nugget.template) || '(mensagem vazia)'}
                   </span>
                 </button>
               </li>

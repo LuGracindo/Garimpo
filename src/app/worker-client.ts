@@ -2,6 +2,9 @@
 
 import workerUrl from '../worker/worker.ts?worker&url';
 import { createScriptUrl } from '../shared/trusted.ts';
+import type { CustomProfileSpec, Preview } from '../core/custom-profile.ts';
+import type { FingerprintInfo } from '../core/laudo.ts';
+import type { LacreType } from '../core/lacre.ts';
 import type { ContextLine } from '../core/context.ts';
 import type { Filter } from '../core/filter.ts';
 import type { Histogram } from '../core/histogram.ts';
@@ -17,6 +20,7 @@ import {
 
 export interface OpenChoices {
   profile?: ProfileId;
+  custom?: CustomProfileSpec;
   mode?: NormalizationMode;
 }
 
@@ -49,6 +53,11 @@ export class RequestCancelled extends Error {
   }
 }
 
+export interface LacreScanReply {
+  counts: Record<string, number>;
+  samples: { type: LacreType; antes: string; depois: string }[];
+}
+
 export interface AnalysisClient {
   open(file: Blob, choices?: OpenChoices): number;
   cancel(requestId: number): void;
@@ -56,6 +65,11 @@ export interface AnalysisClient {
   histogram(filter: Filter): Promise<Histogram>;
   occurrences(filter: Filter, start: number, count: number): Promise<OccurrencesReply>;
   context(event: number, before: number, after: number): Promise<ContextLine[]>;
+  previewProfile(file: Blob, spec: CustomProfileSpec): Promise<Preview>;
+  fingerprint(): Promise<FingerprintInfo>;
+  lacreScan(types: LacreType[]): Promise<LacreScanReply>;
+  /** Derruba o Worker (por exemplo, regex que travou) e cria outro; pedidos pendentes são cancelados. */
+  restart(): void;
   dispose(): void;
 }
 
@@ -65,11 +79,10 @@ interface Pending {
 }
 
 export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): AnalysisClient {
-  const worker = new Worker(createScriptUrl(workerUrl), { type: 'module' });
   let nextRequestId = 1;
   const pending = new Map<number, Pending>();
 
-  worker.onmessage = (event: MessageEvent<unknown>) => {
+  const handle = (event: MessageEvent<unknown>): void => {
     const data = event.data;
     if (!isWorkerToUi(data)) return;
     const waiting = pending.get(data.requestId);
@@ -82,6 +95,13 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
     }
     onMessage(data);
   };
+
+  const spawn = (): Worker => {
+    const created = new Worker(createScriptUrl(workerUrl), { type: 'module' });
+    created.onmessage = handle;
+    return created;
+  };
+  let worker = spawn();
 
   const send = (message: UiToWorker): void => worker.postMessage(message);
 
@@ -157,6 +177,41 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
         after,
       }));
       return r.type === 'context-result' ? r.lines : unexpected();
+    },
+    async previewProfile(file, spec) {
+      const r = await ask((requestId) => ({
+        type: 'preview-profile',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        file,
+        spec,
+      }));
+      return r.type === 'preview-result' ? r.preview : unexpected();
+    },
+    async fingerprint() {
+      const r = await ask((requestId) => ({
+        type: 'fingerprint',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+      }));
+      return r.type === 'fingerprint-result' ? r.fingerprint : unexpected();
+    },
+    async lacreScan(types) {
+      const r = await ask((requestId) => ({
+        type: 'lacre-scan',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        types,
+      }));
+      return r.type === 'lacre-scan-result'
+        ? { counts: r.counts, samples: r.samples }
+        : unexpected();
+    },
+    restart() {
+      for (const waiting of pending.values()) waiting.reject(new RequestCancelled());
+      pending.clear();
+      worker.terminate();
+      worker = spawn();
     },
     dispose() {
       for (const waiting of pending.values()) waiting.reject(new RequestCancelled());

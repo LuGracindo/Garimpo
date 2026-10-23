@@ -4,6 +4,13 @@ import { MAX_INPUT_CHARS, normalizeMessage } from '../../src/core/normalize.ts';
 const padrao = (text: string): string => normalizeMessage(text, 'padrao').template;
 
 describe('normalização (@RF-20)', () => {
+  it('CPF e CNPJ formatados não deixam grupos de dígitos no gabarito', () => {
+    const cpf = normalizeMessage('cliente cpf 529.982.247-25 falhou', 'padrao').template;
+    expect(cpf).toBe('cliente cpf <DOC> falhou');
+    const cnpj = normalizeMessage('empresa 11.222.333/0001-81 bloqueada', 'padrao').template;
+    expect(cnpj).toBe('empresa <DOC> bloqueada');
+  });
+
   it('etapas 1 e 2: remove ANSI e normaliza espaços', () => {
     expect(padrao('\u001b[31mfalha\u001b[0m    grave \t aqui')).toBe('falha grave aqui');
   });

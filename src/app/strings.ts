@@ -27,10 +27,12 @@ export const t = {
   nova: 'nova',
   valoresVariaram: 'Valores que variaram',
   distintos: (n: number, limitado: boolean) => `${limitado ? 'mais de ' : ''}${n} distintos`,
-  formatoEscolhido: (perfil: string, fonte: string, confianca: number | null) =>
-    fonte === 'auto' && confianca !== null
-      ? `Formato ${perfil}, detectado com confiança de ${Math.round(confianca * 100)}%.`
-      : `Formato ${perfil}, escolhido por você.`,
+  formatoEscolhido: (perfil: string, fonte: string, confianca: number | null) => {
+    const nome = perfil === 'custom' ? 'personalizado' : perfil;
+    return fonte === 'auto' && confianca !== null
+      ? `Formato ${nome}, detectado com confiança de ${Math.round(confianca * 100)}%.`
+      : `Formato ${nome}, escolhido por você.`;
+  },
   formatoIncerto: 'Não tenho certeza do formato deste arquivo. Qual destes é o certo?',
   formatoNenhum: 'Nenhum dos formatos conhecidos casou com este arquivo.',
   escolher: 'Usar este formato',
@@ -100,6 +102,7 @@ export const t = {
   atalhoAbrir: 'Abrir a pepita escolhida (ocorrências)',
   atalhoOcorrencia: 'Ocorrência anterior / próxima',
   atalhoFiltros: 'Ir aos filtros',
+  atalhoLaudo: 'Exportar laudo',
   atalhoAtalhos: 'Mostrar atalhos',
   atalhoEsc: 'Fechar painel ou cancelar processamento',
   erroBinarioTitulo: 'Este arquivo parece binário.',
@@ -112,4 +115,109 @@ export const t = {
   erroMemoriaTexto:
     'Feche outras abas e tente de novo, ou abra um trecho menor do log. Nada foi enviado a lugar nenhum.',
   tentarOutro: 'Abrir outro arquivo',
+  remover: 'Remover',
+  perfilCriar: 'Criar perfil personalizado',
+  perfilMeus: 'Seus perfis salvos',
+  perfilUsarSalvo: 'Usar',
+  perfilEditar: 'Editar',
+  perfilExcluir: 'Excluir',
+  perfilEditorTitulo: 'Perfil personalizado',
+  perfilEditorAjuda:
+    'Descreva o formato com uma expressão regular. Os grupos nomeados dizem o que é cada parte da linha.',
+  perfilModelo: 'Começar de um modelo',
+  perfilModeloEscolher: 'Escolher…',
+  perfilNome: 'Nome do perfil',
+  perfilPadrao: 'Expressão regular (uma linha de evento)',
+  perfilGrupos:
+    'Grupos: (?<msg>…) obrigatório; (?<data>…), (?<nivel>…) e (?<tag>…) opcionais. Linhas que não casam viram continuação do evento anterior.',
+  perfilHora: 'Formato da hora',
+  perfilFormatosHora: {
+    iso: 'ISO (2026-10-22 10:00:00 ou com :123 de milissegundos)',
+    br: 'Brasileiro (22/10/2026 10:00:00)',
+    'epoch-s': 'Segundos desde 1970',
+    'epoch-ms': 'Milissegundos desde 1970',
+    clf: 'Servidor web (22/Oct/2026:10:00:00 -0300)',
+  },
+  perfilNiveis: 'Mapa de níveis',
+  perfilNivelValor: 'Texto do nível no log',
+  perfilNivelPara: 'Nível do Garimpo',
+  perfilAdicionarNivel: 'Adicionar nível',
+  perfilNiveisAjuda:
+    'Opcional. Nomes comuns (error, warn, info, debug…) e números 1, 2, 10 já são entendidos; use o mapa para o que for diferente. 01 e 1 valem o mesmo.',
+  perfilContinuacao: 'Toda linha que não casa continua o evento anterior',
+  perfilPrevia: 'Pré-visualização',
+  perfilPreviaResumo: (casou: string, total: string, hora: string, nivel: string) =>
+    `${casou} de ${total} linhas casaram. Com hora: ${hora}. Com nível: ${nivel}.`,
+  perfilPreviaCorrija: 'Corrija o padrão para ver a pré-visualização.',
+  perfilColLinha: 'Linha',
+  perfilColHora: 'Hora',
+  perfilColNivel: 'Nível',
+  perfilColMensagem: 'Mensagem',
+  perfilNaoCasou: 'Não casou (continuação do evento anterior)',
+  perfilSalvar: 'Salvar neste navegador para os próximos arquivos',
+  perfilUsar: 'Usar este perfil',
+  perfilLento:
+    'O padrão demorou demais e foi interrompido. Evite repetições dentro de repetições e use trechos mais específicos.',
+  perfilProblemaNome: 'Confira o nome (até 40 caracteres) e o mapa de níveis.',
+  perfilProblemaVazio: 'Escreva a expressão regular.',
+  perfilProblemaLongo: 'A expressão passa de 500 caracteres.',
+  perfilProblemaSintaxe:
+    'Expressão regular inválida. Confira parênteses, colchetes e os nomes dos grupos.',
+  perfilProblemaMensagem: 'Falta o grupo (?<msg>…) com o texto da mensagem.',
+  perfilProblemaAninhado:
+    'Repetição dentro de repetição, como (a+)+, pode travar. Reescreva sem aninhar.',
+  perfilProblemaCampos: 'Há um grupo com nome desconhecido. Use msg, data, nivel e tag.',
+  perfilTravou:
+    'A análise parou de responder. O padrão do perfil pode estar lento demais; revise-o e tente de novo.',
+  formatoPersonalizado: 'personalizado',
+  exportarLaudo: 'Exportar laudo',
+  voltarBateia: 'Voltar à bateia',
+  laudoTitulo: 'Laudo',
+  laudoAjuda:
+    'O laudo registra o que foi analisado e como, com hashes para conferir depois. O arquivo original não vai dentro dele.',
+  laudoImpressao: 'Impressão digital da jazida',
+  laudoCalculando: 'Calculando a impressão digital…',
+  laudoFalhaImpressao: 'Não foi possível calcular a impressão digital.',
+  laudoPrevia: 'Pré-visualização do laudo',
+  laudoBaixarHtml: 'Baixar laudo (HTML)',
+  laudoBaixarJson: 'Baixar laudo (JSON)',
+  laudoBaixarMapa: 'Baixar mapa de marcadores',
+  laudoMapaAviso:
+    'O mapa liga cada marcador ao valor original. Guarde-o à parte e nunca o envie junto com o laudo.',
+  laudoVerificar:
+    'Para conferir um laudo depois: npm run verify:laudo -- laudo.html --jazida arquivo.log',
+  lacreTitulo: 'Lacre',
+  lacreLigado: 'Mascarar dados sensíveis (tela e laudo)',
+  lacreAviso:
+    'O Lacre reduz o risco de vazamento, mas não é garantia: ele só reconhece padrões conhecidos e não acha nomes, endereços ou dados em texto livre. Revise o laudo antes de compartilhar.',
+  lacreVarrendo: 'Procurando dados sensíveis no arquivo…',
+  lacreEncontrados: 'Encontrados no arquivo',
+  lacreNada: 'Nada encontrado',
+  lacreExemplos: 'O que será mascarado (exemplos)',
+  lacreAntes: 'Antes',
+  lacreDepois: 'Depois',
+  lacreTipoLabels: {
+    email: 'E-mail',
+    ipv4: 'IPv4',
+    ipv6: 'IPv6',
+    cpf: 'CPF',
+    cnpj: 'CNPJ',
+    cartao: 'Cartão de crédito',
+    jwt: 'JWT',
+    'chave-api': 'Chave de API',
+    uuid: 'UUID (desligado por padrão)',
+    'telefone-br': 'Telefone brasileiro (desligado por padrão)',
+  },
+  lacreNaTela: 'Lacre ligado: valores sensíveis aparecem como marcadores.',
+  laudoSecaoJazida: 'Jazida',
+  laudoSecaoFormato: 'Formato e agrupamento',
+  laudoSecaoContadores: 'Contadores',
+  laudoSecaoLacre: 'Lacre no laudo',
+  laudoSecaoPepitas: 'Pepitas',
+  laudoSecaoDecisoes: 'Trilha de decisões',
+  laudoSecaoLimites: 'O que este laudo não garante',
+  laudoHash: 'Hash do laudo',
+  laudoGeradoEm: 'Gerado em',
+  laudoSubstituicoes: 'Substituições',
+  laudoNenhuma: 'nenhuma',
 } as const;

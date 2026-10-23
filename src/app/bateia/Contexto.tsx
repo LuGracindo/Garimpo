@@ -9,6 +9,7 @@ import { t } from '../strings.ts';
 interface Props {
   client: AnalysisClient;
   event: number | null;
+  mask: (text: string) => string;
 }
 
 function clamp(value: number): number {
@@ -16,7 +17,7 @@ function clamp(value: number): number {
   return Math.max(0, Math.min(MAX_CONTEXT_LINES, Math.trunc(value)));
 }
 
-export function Contexto({ client, event }: Props) {
+export function Contexto({ client, event, mask }: Props) {
   const [before, setBefore] = useState(5);
   const [after, setAfter] = useState(5);
   const [lines, setLines] = useState<ContextLine[] | null>(null);
@@ -79,7 +80,7 @@ export function Contexto({ client, event }: Props) {
         <pre class="contexto-linhas" tabIndex={0}>
           {(lines ?? []).map((line, i) => (
             <span key={i} class={`linha linha-${line.kind}`}>
-              {line.text}
+              {mask(line.text)}
               {line.cut ? t.linhaCortada : ''}
               {'\n'}
             </span>

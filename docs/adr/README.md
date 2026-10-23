@@ -55,3 +55,19 @@ Fonte: SDD, seção 16.1, e seção 19 (decisões de 22 de outubro de 2026). Cad
 4. **Atalhos** seguem o SDD 9.4. Valem só fora de campos de texto e, para `Enter`, fora de botões e listas. A preferência de desligar fica em `localStorage` (opcional, com tratamento de falha). O `e` (exportar laudo) entra no M3.
 5. **Estados**: binário = ao menos um byte nulo nos primeiros 64 KB (logs em UTF-16 caem aqui e a mensagem orienta a converter); limite = 2 GB; memória = `RangeError`. Cada um tem texto, ação e foco inicial no título.
 6. **Trusted Types compartilhado**: a criação da política saiu para `src/shared/trusted.ts`, usada pela página e pelo Worker de análise (uma política por contexto, em cache).
+
+## Perfil personalizado (antecipado da v1.1)
+
+1. **Motivação**: cada formato novo exigia código. O perfil personalizado descreve o formato por uma regex de **grupos nomeados**: `msg` (obrigatório), `data`, `nivel` e `tag` (opcionais), com nomes em português ou inglês. A hora tem cinco formatos (ISO, brasileiro, segundos, milissegundos, servidor web); o nível usa um mapa da pessoa e, na falta dele, os sinônimos e números já conhecidos (`01` e `1` são o mesmo nível).
+2. **Segurança**: a regex roda em cada linha dentro do Worker de análise. Limites: padrão até 500 caracteres, só os 4.096 primeiros caracteres de cada linha, recusa de quantificadores aninhados como `(a+)+` e de grupos desconhecidos. Isso **não elimina** todo padrão lento (por exemplo `(a|aa)+`), então há duas redes: a pré-visualização tem prazo de 3 s (o Worker é derrubado e recriado) e a análise com perfil personalizado é interrompida após 15 s sem progresso.
+3. **Não entra na detecção automática**: só os quatro perfis embutidos concorrem. Quando nenhum é confiável, a tela de escolha oferece os perfis salvos e a criação de um novo; os salvos ficam em `localStorage` (até 20) e só neste navegador.
+4. **Pré-visualização**: o Worker lê o início do arquivo (as mesmas 500 linhas da detecção) e devolve contagens e as 12 primeiras linhas, casadas ou não, com hora, nível e mensagem lidos.
+
+## ADR-M3: Laudo, Lacre e verificador
+
+- Laudo `garimpo-laudo/1`: JSON com campos em português; integridade = SHA-256 do JSON canônico (chaves ordenadas, sem espaços) sem o campo `integridade`. Detecta alteração acidental; não prova autoria (sem assinatura).
+- HTML do laudo: autocontido, sem scripts, meta CSP `default-src 'none'`; todo texto passa por `escapeHtml`; o JSON vai embutido em `<pre id="dados-laudo">` para o verificador.
+- Impressão digital: `sha256-blocos-4MiB` (SHA-256 por bloco; raiz = SHA-256 da concatenação dos hashes). O arquivo original nunca entra no laudo.
+- Lacre: só padrões conhecidos; não garante anonimização. Marcadores numerados pela primeira aparição; mapa nunca vai no laudo. O laudo usa instância própria do Lacre (marcadores determinísticos). Gabaritos de pepita não mantêm fragmentos de CPF/CNPJ (`<DOC>`).
+- Verificador (`scripts/verify-laudo.ts`): confere hash, esquema e, com `--jazida`, a impressão digital; saída 0 ok, 1 reprovado, 2 uso.
+- Build id: `WORKERS_CI_COMMIT_SHA`/`CF_PAGES_COMMIT_SHA`/`GITHUB_SHA`, ou `dev`.

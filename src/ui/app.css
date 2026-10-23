@@ -891,3 +891,160 @@ kbd {
   font-family: var(--f-dado);
   font-size: 0.8125rem;
 }
+
+/* ---- Perfil personalizado ---- */
+
+.editor-perfil {
+  width: min(1000px, 100%);
+}
+
+.editor-perfil textarea.entrada {
+  resize: vertical;
+  min-height: 4.5em;
+}
+
+.mapa-niveis {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mapa-linha {
+  display: flex;
+  gap: var(--u);
+  margin-bottom: var(--u);
+}
+
+.mapa-linha .entrada:first-child {
+  flex: 1;
+}
+
+.acoes {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.acoes .botao {
+  margin-top: 0;
+}
+
+.botao:disabled {
+  color: var(--poeira);
+  border-color: var(--poeira);
+  cursor: not-allowed;
+}
+
+.previa-tabela {
+  max-height: 300px;
+  overflow: auto;
+  font-family: var(--f-dado);
+  font-size: 0.75rem;
+}
+
+.previa-tabela table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.previa-tabela th,
+.previa-tabela td {
+  padding: 4px var(--u);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--borda);
+  overflow-wrap: anywhere;
+}
+
+.previa-linha {
+  max-width: 40ch;
+}
+
+.previa-nao td {
+  color: var(--poeira);
+}
+
+.salvos {
+  display: grid;
+  gap: var(--u);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.salvos li {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+}
+
+.salvos .escolha-nome {
+  margin-right: auto;
+}
+
+/* Laudo e Lacre (M3) */
+.laudo {
+  display: grid;
+  gap: 1rem;
+}
+.laudo-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.laudo-dados {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+.laudo-dados dt {
+  font-size: 0.8rem;
+  color: var(--texto-suave, inherit);
+}
+.laudo-dados dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.lacre-tipos {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.lacre-tipos li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.caixa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.previa-tabela {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.previa-tabela table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.previa-tabela th,
+.previa-tabela td {
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  vertical-align: top;
+}
+.previa-linha {
+  font-family: var(--fonte-mono, monospace);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}

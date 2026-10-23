@@ -10,6 +10,8 @@ import { selectEvents, type Axis } from '../core/query.ts';
 import { TextScanner } from '../core/textsearch.ts';
 import { SEVERITIES } from '../core/types.ts';
 import type { OccurrenceRowMessage } from '../shared/protocol.ts';
+import { LACRE_TYPES, Lacre, findSensitive, type LacreType } from '../core/lacre.ts';
+import { fingerprintBlob, type Fingerprint } from './fingerprint.ts';
 import { readAlignedChunks, type BlobLike } from './reader.ts';
 import { createInProcessScanner, type RegexScanner } from './regex-scan.ts';
 
@@ -35,6 +37,19 @@ export interface OccurrencesResult {
 
 function textKey(text: string, caseSensitive: boolean, regex: boolean): string {
   return text === '' ? '' : JSON.stringify([text, caseSensitive, regex]);
+}
+
+export const LACRE_SAMPLES_PER_TYPE = 3;
+
+export interface LacreSample {
+  type: LacreType;
+  antes: string;
+  depois: string;
+}
+
+export interface LacreScan {
+  counts: Record<LacreType, number>;
+  samples: LacreSample[];
 }
 
 export class Superseded extends Error {
@@ -244,6 +259,59 @@ export class Session {
       before,
       after,
     );
+  }
+
+  /** Impressão digital do arquivo (AUD-02). Lança Superseded se o pedido for abandonado. */
+  async fingerprint(isCancelled: () => boolean): Promise<Fingerprint> {
+    const result = await fingerprintBlob(this.blob, {
+      isCancelled: () => this.disposed || isCancelled(),
+    });
+    if (!result) throw new Superseded();
+    return result;
+  }
+
+  /**
+   * Conta quanto dado sensível há no arquivo inteiro, por tipo, e guarda poucos exemplos
+   * (antes e depois da máscara) para a pessoa conferir o que o Lacre vai fazer.
+   */
+  async lacreScan(types: readonly LacreType[], isCancelled: () => boolean): Promise<LacreScan> {
+    const wanted = new Set(types);
+    const counts = Object.fromEntries(LACRE_TYPES.map((t) => [t, 0])) as Record<LacreType, number>;
+    const samples: LacreSample[] = [];
+    const sampled = new Map<LacreType, number>();
+    const decoder = new TextDecoder('utf-8');
+    const stop = (): boolean => this.disposed || isCancelled();
+
+    for await (const chunk of readAlignedChunks(this.blob, 4 * 1024 * 1024, stop)) {
+      let position = 0;
+      let inBatch = 0;
+      while (position < chunk.bytes.length) {
+        let end = chunk.bytes.indexOf(0x0a, position);
+        const next = end === -1 ? chunk.bytes.length : end + 1;
+        if (end === -1) end = chunk.bytes.length;
+        const line = decoder.decode(chunk.bytes.subarray(position, end));
+        position = next;
+        const hits = findSensitive(line, wanted);
+        for (const hit of hits) {
+          counts[hit.type] += 1;
+          const taken = sampled.get(hit.type) ?? 0;
+          if (taken < LACRE_SAMPLES_PER_TYPE) {
+            sampled.set(hit.type, taken + 1);
+            const antes = line.length > 300 ? line.slice(0, 300) : line;
+            samples.push({ type: hit.type, antes, depois: new Lacre(wanted).mask(antes) });
+          }
+        }
+        inBatch += 1;
+        if (inBatch === 2000) {
+          inBatch = 0;
+          // Cede a vez para o Worker tratar pedidos novos (cancelamento) entre os lotes.
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          if (stop()) throw new Superseded();
+        }
+      }
+    }
+    if (stop()) throw new Superseded();
+    return { counts, samples };
   }
 
   /** Libera o que a sessão guarda e abandona varreduras em andamento. */

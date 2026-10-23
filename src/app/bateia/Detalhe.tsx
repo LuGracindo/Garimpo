@@ -28,9 +28,18 @@ interface Props {
   filterId: string;
   aba: Aba;
   onAba: (aba: Aba) => void;
+  mask: (text: string) => string;
 }
 
-function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: NuggetView | null }) {
+function Resumo({
+  analysis,
+  nugget,
+  mask,
+}: {
+  analysis: AnalysisResult;
+  nugget: NuggetView | null;
+  mask: (text: string) => string;
+}) {
   const s = analysis.summary;
   const counts = nugget ? nugget.severityCounts : s.severityCounts;
   const first = nugget ? nugget.firstTimeMs : s.firstTimeMs;
@@ -40,11 +49,11 @@ function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: Nugget
       {nugget ? (
         <>
           <p class="rotulo">{t.gabarito}</p>
-          <p class="pepita-gabarito">{nugget.template || '(mensagem vazia)'}</p>
+          <p class="pepita-gabarito">{mask(nugget.template) || '(mensagem vazia)'}</p>
           {nugget.hasStack ? (
             <>
               <p class="rotulo">{t.primeiraMensagem}</p>
-              <p class="pepita-gabarito">{nugget.headTemplate || '(mensagem vazia)'}</p>
+              <p class="pepita-gabarito">{mask(nugget.headTemplate) || '(mensagem vazia)'}</p>
             </>
           ) : null}
           {nugget.markers.length > 0 ? (
@@ -55,7 +64,7 @@ function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: Nugget
                   <li key={marker.marker}>
                     <span class="marcador">{marker.marker}</span>
                     <span>{t.distintos(marker.distinct, marker.capped)}</span>
-                    <span class="marcador-ex">{marker.examples.join(' · ')}</span>
+                    <span class="marcador-ex">{mask(marker.examples.join(' · '))}</span>
                   </li>
                 ))}
               </ul>
@@ -94,7 +103,16 @@ function Resumo({ analysis, nugget }: { analysis: AnalysisResult; nugget: Nugget
   );
 }
 
-export function Detalhe({ client, analysis, nugget, filter, filterId, aba, onAba: setAba }: Props) {
+export function Detalhe({
+  client,
+  analysis,
+  nugget,
+  filter,
+  filterId,
+  aba,
+  onAba: setAba,
+  mask,
+}: Props) {
   const [active, setActive] = useState<OccurrenceRowMessage | null>(null);
 
   const onTabKey = (event: KeyboardEvent): void => {
@@ -129,7 +147,7 @@ export function Detalhe({ client, analysis, nugget, filter, filterId, aba, onAba
       </div>
       <div id="painel-aba" role="tabpanel" aria-labelledby={`aba-${aba}`} class="painel-aba">
         {aba === 'resumo' ? (
-          <Resumo analysis={analysis} nugget={nugget} />
+          <Resumo analysis={analysis} nugget={nugget} mask={mask} />
         ) : (
           <>
             <p class="nota">{aba === 'sedimento' ? t.sedimentoAjuda : t.ocorrenciasAjuda}</p>
@@ -139,8 +157,9 @@ export function Detalhe({ client, analysis, nugget, filter, filterId, aba, onAba
               filter={aba === 'sedimento' ? { ...filter, nuggetId: null } : filter}
               label={aba === 'sedimento' ? t.abaSedimento : t.ocorrenciasLista}
               onActive={setActive}
+              mask={mask}
             />
-            <Contexto client={client} event={active ? active.event : null} />
+            <Contexto client={client} event={active ? active.event : null} mask={mask} />
           </>
         )}
       </div>

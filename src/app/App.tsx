@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Logo } from '../ui/Logo.tsx';
 import type { AnalysisResult } from '../core/analyzer.ts';
+import type { CustomProfileSpec } from '../core/custom-profile.ts';
 import type { ProfileId } from '../core/types.ts';
 import type { ProfileCandidate, WorkerToUi } from '../shared/protocol.ts';
 import { runSealSelfTest, type SealState } from './seal.ts';
 import { Bateia } from './bateia/Bateia.tsx';
+import { EditorPerfil } from './bateia/EditorPerfil.tsx';
+import { deleteProfile, loadProfiles, saveProfile } from './custom-profiles.ts';
 import { megabytes, numero } from './format.ts';
 import { createAnalysisClient, type AnalysisClient } from './worker-client.ts';
 import { t } from './strings.ts';
@@ -27,8 +30,16 @@ type Phase =
       maxLineBytes: number;
       elapsedMs: number;
       analysis: AnalysisResult;
+      modifiedAt: number | null;
+      custom: CustomProfileSpec | null;
     }
   | { kind: 'choose'; name: string; candidates: ProfileCandidate[] }
+  | {
+      kind: 'editor';
+      name: string;
+      initial: CustomProfileSpec | null;
+      candidates: ProfileCandidate[];
+    }
   | { kind: 'cancelled' }
   | { kind: 'error'; code: string; details: string };
 
@@ -52,6 +63,8 @@ function Selo({ state }: { state: SealState }) {
   );
 }
 
+const STALL_MS = 15_000;
+
 const ERROS: Record<string, { titulo: string; texto: string }> = {
   'GAR-BIN-001': { titulo: t.erroBinarioTitulo, texto: t.erroBinarioTexto },
   'GAR-LIM-001': { titulo: t.erroLimiteTitulo, texto: t.erroLimiteTexto },
@@ -71,6 +84,7 @@ function Erro({ code, details, onReset }: { code: string; details: string; onRes
         {known ? known.titulo : t.erroInterno}
       </h2>
       {known ? <p class="nota">{known.texto}</p> : null}
+      {details === 'travou' ? <p class="nota">{t.perfilTravou}</p> : null}
       <p class="arquivo">
         {code} · {details}
       </p>
@@ -88,12 +102,18 @@ export function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [dragging, setDragging] = useState(false);
   const [client, setClient] = useState<AnalysisClient | null>(null);
+  const [saved, setSaved] = useState<CustomProfileSpec[]>(loadProfiles);
 
   const clientRef = useRef<AnalysisClient | null>(null);
   const currentRequest = useRef<number | null>(null);
-  const currentFile = useRef<{ name: string; size: number } | null>(null);
+  const currentFile = useRef<{ name: string; size: number; modifiedAt: number | null } | null>(
+    null,
+  );
+  const currentCustom = useRef<CustomProfileSpec | null>(null);
   const currentBlob = useRef<File | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastProgress = useRef(0);
+  const usingCustom = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -111,6 +131,7 @@ export function App() {
       const file = currentFile.current;
 
       if (message.type === 'progress') {
+        lastProgress.current = Date.now();
         setPhase({
           kind: 'working',
           requestId: message.requestId,
@@ -128,6 +149,8 @@ export function App() {
           maxLineBytes: message.maxLineBytes,
           elapsedMs: message.elapsedMs,
           analysis: message.analysis,
+          modifiedAt: file?.modifiedAt ?? null,
+          custom: currentCustom.current,
         });
       } else if (message.type === 'needs-profile') {
         setPhase({ kind: 'choose', name: file?.name ?? '', candidates: message.candidates });
@@ -160,12 +183,36 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const openFile = (file: File, profile?: ProfileId): void => {
+  // Perfil personalizado que trava o Worker: sem progresso por muito tempo, derruba e avisa.
+  useEffect(() => {
+    if (phase.kind !== 'working') return undefined;
+    const timer = window.setInterval(() => {
+      if (!usingCustom.current) return;
+      if (Date.now() - lastProgress.current > STALL_MS) {
+        clientRef.current?.restart();
+        currentRequest.current = null;
+        setPhase({ kind: 'error', code: 'GAR-IO-001', details: 'travou' });
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [phase.kind]);
+
+  const openFile = (file: File, profile?: ProfileId, custom?: CustomProfileSpec): void => {
     const client = clientRef.current;
     if (!client) return;
-    currentFile.current = { name: file.name, size: file.size };
+    currentFile.current = {
+      name: file.name,
+      size: file.size,
+      modifiedAt: file.lastModified || null,
+    };
+    currentCustom.current = custom ?? null;
     currentBlob.current = file;
-    const requestId = client.open(file, profile ? { profile } : {});
+    usingCustom.current = custom !== undefined;
+    lastProgress.current = Date.now();
+    const requestId = client.open(
+      file,
+      custom ? { profile: 'custom', custom } : profile ? { profile } : {},
+    );
     currentRequest.current = requestId;
     setPhase({
       kind: 'working',
@@ -217,6 +264,8 @@ export function App() {
             name={phase.name}
             size={phase.size}
             elapsedMs={phase.elapsedMs}
+            modifiedAt={phase.modifiedAt}
+            custom={phase.custom}
             onReset={reset}
           />
         ) : (
@@ -282,12 +331,84 @@ export function App() {
                     </li>
                   ))}
                 </ul>
-                <div>
-                  <button type="button" class="botao" onClick={reset}>
+                {saved.length > 0 ? (
+                  <>
+                    <h3 class="subtitulo">{t.perfilMeus}</h3>
+                    <ul class="salvos">
+                      {saved.map((spec) => (
+                        <li key={spec.name}>
+                          <span class="escolha-nome">{spec.name}</span>
+                          <button
+                            type="button"
+                            class="botao-discreto"
+                            onClick={() => {
+                              const file = currentBlob.current;
+                              if (file) openFile(file, undefined, spec);
+                            }}
+                          >
+                            {t.perfilUsarSalvo}
+                          </button>
+                          <button
+                            type="button"
+                            class="botao-discreto"
+                            onClick={() =>
+                              setPhase({
+                                kind: 'editor',
+                                name: phase.name,
+                                initial: spec,
+                                candidates: phase.candidates,
+                              })
+                            }
+                          >
+                            {t.perfilEditar}
+                          </button>
+                          <button
+                            type="button"
+                            class="botao-discreto"
+                            onClick={() => setSaved(deleteProfile(spec.name))}
+                          >
+                            {t.perfilExcluir}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                <div class="acoes">
+                  <button
+                    type="button"
+                    class="botao"
+                    onClick={() =>
+                      setPhase({
+                        kind: 'editor',
+                        name: phase.name,
+                        initial: null,
+                        candidates: phase.candidates,
+                      })
+                    }
+                  >
+                    {t.perfilCriar}
+                  </button>
+                  <button type="button" class="botao-discreto" onClick={reset}>
                     {t.novaJazida}
                   </button>
                 </div>
               </section>
+            ) : phase.kind === 'editor' && client && currentBlob.current ? (
+              <EditorPerfil
+                client={client}
+                file={currentBlob.current}
+                fileName={phase.name}
+                initial={phase.initial}
+                onUse={(spec, save) => {
+                  if (save) setSaved(saveProfile(spec));
+                  const file = currentBlob.current;
+                  if (file) openFile(file, undefined, spec);
+                }}
+                onCancel={() =>
+                  setPhase({ kind: 'choose', name: phase.name, candidates: phase.candidates })
+                }
+              />
             ) : phase.kind === 'cancelled' ? (
               <section class="cartao">
                 <h2 class="cartao-titulo">{t.cancelado}</h2>

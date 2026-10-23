@@ -2,7 +2,7 @@
 // Timestamps sem fuso assumem UTC (RF-15, valor padrão); isso deve constar no laudo.
 
 import { levelFromNumber, normalizeLevel } from './levels.ts';
-import type { ParsedLine, Profile, ProfileId, Severity } from './types.ts';
+import type { BuiltinProfileId, ParsedLine, Profile, Severity } from './types.ts';
 
 /** Regras gerais de continuação (SDD 8.3). */
 export function isGeneralContinuation(line: string): boolean {
@@ -185,13 +185,13 @@ export const lvlDashProfile: Profile = {
   },
 };
 
-const BY_ID: Readonly<Record<ProfileId, Profile>> = {
+const BY_ID: Readonly<Record<BuiltinProfileId, Profile>> = {
   'iso-level': isoLevelProfile,
   jsonl: jsonlProfile,
   'http-combined': httpCombinedProfile,
   'lvl-dash': lvlDashProfile,
 };
 
-export function getProfile(id: ProfileId): Profile {
+export function getProfile(id: BuiltinProfileId): Profile {
   return BY_ID[id];
 }

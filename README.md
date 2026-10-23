@@ -6,22 +6,27 @@ Aplicação web estática, 100% no navegador, sem backend. Código privado; apen
 
 O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy>. Em caso de dúvida, o SDD (principalmente a seção 19, de decisões) é a referência.
 
-## Estado: marco M2 completo (interface da bateia)
+## Estado: marco M3 completo (laudo, hashes e Lacre)
 
-| Pronto                                                                                                                              | Ainda não                                             |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                | Laudo e exportação, `e` nos atalhos (M3)              |
-| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                 | Laudo, hashes e Lacre (M3)                            |
-| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`) | Endurecimento, e2e e acessibilidade automatizada (M4) |
-| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                   | Publicação final (M5)                                 |
-| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                      | Perfis syslog e logfmt, `.gz` (v1.1)                  |
-| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                    |                                                       |
-| M2: Perfil (barras por severidade, seleção de intervalo por arrasto e teclado, tabela equivalente)                                  |                                                       |
-| M2: Peneira (níveis, intervalo, pepita e texto literal), contagem por pepita sob o filtro                                           |                                                       |
-| M2: detalhe com abas Resumo, Ocorrências e Sedimento, lista virtualizada e contexto sob demanda                                     |                                                       |
-| M2: busca por regex em Worker isolado, derrubado se ficar 2 s sem sinal de vida                                                     |                                                       |
-| M2: atalhos de teclado (`/`, `j`/`k`, `Enter`, `[`/`]`, `f`, `?`, `Esc`), com opção de desligar                                     |                                                       |
-| M2: estados de arquivo binário, acima de 2 GB e sem memória                                                                         |                                                       |
+| Pronto                                                                                                                                                                                         | Ainda não                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                                                                           | Endurecimento, e2e e acessibilidade automatizada (M4) |
+| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                                                                            | Publicação final (M5)                                 |
+| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`)                                                            | Perfis embutidos syslog e logfmt, `.gz` (v1.1)        |
+| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                                                                              |                                                       |
+| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                                                                                 | Perfis embutidos syslog e logfmt, `.gz` (v1.1)        |
+| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                                                                               |                                                       |
+| M2: Perfil (barras por severidade, seleção de intervalo por arrasto e teclado, tabela equivalente)                                                                                             |                                                       |
+| M2: Peneira (níveis, intervalo, pepita e texto literal), contagem por pepita sob o filtro                                                                                                      |                                                       |
+| M2: detalhe com abas Resumo, Ocorrências e Sedimento, lista virtualizada e contexto sob demanda                                                                                                |                                                       |
+| M2: busca por regex em Worker isolado, derrubado se ficar 2 s sem sinal de vida                                                                                                                |                                                       |
+| M2: atalhos de teclado (`/`, `j`/`k`, `Enter`, `[`/`]`, `f`, `?`, `Esc`), com opção de desligar                                                                                                |                                                       |
+| M2: estados de arquivo binário, acima de 2 GB e sem memória                                                                                                                                    |                                                       |
+| Perfil personalizado: o formato é descrito por regex com grupos nomeados, com pré-visualização e perfis salvos no navegador                                                                    |                                                       |
+| M3: Laudo em HTML autocontido (sem scripts, CSP própria) e JSON `garimpo-laudo/1`, com hash SHA-256 de integridade                                                                             |                                                       |
+| M3: impressão digital da jazida (SHA-256 por blocos de 4 MiB) e id do build no laudo                                                                                                           |                                                       |
+| M3: Lacre: e-mail, IPv4/IPv6, CPF/CNPJ (com dígitos verificadores), cartão (Luhn), JWT e chaves de API; UUID e telefone opcionais. Marcadores `<EMAIL_1>`; mapa só em memória, baixado à parte |                                                       |
+| M3: tela do Laudo (`e`), Lacre também nas linhas exibidas, verificador `npm run verify:laudo -- laudo.html --jazida arquivo.log`                                                               |                                                       |
 
 ## Primeiros passos
 

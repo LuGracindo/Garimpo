@@ -174,4 +174,32 @@ describe('protocolo UI e Worker (@SEG-08)', () => {
       }),
     ).toBe(false);
   });
+
+  it('valida impressão digital e varredura do Lacre', () => {
+    const base = { requestId: 2, protocolVersion: 1 };
+    expect(isUiToWorker({ type: 'fingerprint', ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'lacre-scan', types: ['email', 'cpf'], ...base })).toBe(true);
+    expect(isUiToWorker({ type: 'lacre-scan', types: ['senha'], ...base })).toBe(false);
+    const fingerprint = {
+      metodo: 'sha256-blocos-4MiB',
+      tamanhoBloco: 4194304,
+      blocos: 1,
+      bytes: 3,
+      raiz: 'a'.repeat(64),
+    };
+    expect(isWorkerToUi({ type: 'fingerprint-result', fingerprint, ...base })).toBe(true);
+    expect(
+      isWorkerToUi({
+        type: 'fingerprint-result',
+        fingerprint: { ...fingerprint, raiz: 'xyz' },
+        ...base,
+      }),
+    ).toBe(false);
+    const counts = { email: 1, cpf: 0 };
+    const samples = [{ type: 'email', antes: 'a@b.co', depois: '<EMAIL_1>' }];
+    expect(isWorkerToUi({ type: 'lacre-scan-result', counts, samples, ...base })).toBe(true);
+    expect(
+      isWorkerToUi({ type: 'lacre-scan-result', counts: { senha: 1 }, samples, ...base }),
+    ).toBe(false);
+  });
 });
