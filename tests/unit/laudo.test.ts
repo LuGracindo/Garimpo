@@ -40,6 +40,17 @@ async function entrada(opts: Partial<LaudoInput> = {}, texto = log): Promise<Lau
   };
 }
 
+describe('rótulos do selo (@AUD-02)', () => {
+  it('algoritmo ou canonicalização trocados reprovam o laudo', async () => {
+    const laudo = await sealLaudo(buildLaudo(await entrada()), sha256Hex);
+    expect((await verifyLaudo(laudo, sha256Hex)).ok).toBe(true);
+    const outroAlgoritmo = { ...laudo, integridade: { ...laudo.integridade, algoritmo: 'sha257' } };
+    expect((await verifyLaudo(outroAlgoritmo as typeof laudo, sha256Hex)).ok).toBe(false);
+    const outraCanon = { ...laudo, integridade: { ...laudo.integridade, canonicalizacao: 'x' } };
+    expect((await verifyLaudo(outraCanon as typeof laudo, sha256Hex)).ok).toBe(false);
+  });
+});
+
 describe('JSON canônico (@AUD-03)', () => {
   it('ordena as chaves e não usa espaços', () => {
     expect(canonicalJson({ b: 1, a: [true, null, 'x'], c: { z: 1, y: 2 } })).toBe(

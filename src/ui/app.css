@@ -350,6 +350,13 @@ body {
   color: var(--poeira);
 }
 
+/* Sobre o fundo de seleção, a severidade vai em cor de texto de máximo contraste
+   (a borda esquerda e a própria palavra continuam dizendo o nível). */
+.pepita-botao[aria-pressed='true'] .sev,
+.ocorrencia-ativa .sev {
+  color: var(--areia);
+}
+
 .pepita-contagem {
   font-size: 1rem;
 }

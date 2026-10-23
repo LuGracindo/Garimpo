@@ -77,8 +77,8 @@ describe('Lacre: detecção e máscara (@RF-40, @RF-41)', () => {
     ['cnpj', 'empresa 11.444.777/0001-61 ativa'],
     ['cartao', 'cartao 4111 1111 1111 1111 recusado'],
     ['cartao', 'cartao 4111-1111-1111-1111 recusado'],
-    ['jwt', 'token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl fim'],
-    ['chave-api', 'chave AKIAIOSFODNN7EXAMPLE usada'],
+    ['jwt', 'token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl fim'], // segredo-falso
+    ['chave-api', 'chave AKIAIOSFODNN7EXAMPLE usada'], // segredo-falso
     ['chave-api', `chave ghp_${'a'.repeat(36)} usada`],
     ['chave-api', `chave sk_live_${'A1b2'.repeat(5)} usada`],
   ];
@@ -135,7 +135,7 @@ describe('Lacre: detecção e máscara (@RF-40, @RF-41)', () => {
   it('o e-mail vence o IP e o JWT vence o e-mail quando se sobrepõem', () => {
     const lacre = new Lacre(padrao);
     expect(lacre.mask('u@10.0.0.1.com')).toContain('<EMAIL_1>');
-    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFAYi5jb20ifQ.assinaturaX';
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFAYi5jb20ifQ.assinaturaX'; // segredo-falso
     expect(new Lacre(padrao).mask(jwt)).toBe('<JWT_1>');
   });
 

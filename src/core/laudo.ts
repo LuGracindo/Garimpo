@@ -289,7 +289,16 @@ export interface Verification {
 export async function verifyLaudo(laudo: Laudo, sha256: Sha256Hex): Promise<Verification> {
   const { integridade, ...rest } = laudo;
   const calculado = await integrityOf(rest as LaudoData, sha256);
-  return { ok: calculado === integridade.valor, esperado: integridade.valor, calculado };
+  // Os rótulos do selo também contam: um laudo que declara outro algoritmo ou outra
+  // canonicalização não foi lacrado por este programa e não deve passar.
+  const rotulosOk =
+    integridade.algoritmo === INTEGRITY_ALGORITHM &&
+    integridade.canonicalizacao === CANONICALIZATION;
+  return {
+    ok: rotulosOk && calculado === integridade.valor,
+    esperado: integridade.valor,
+    calculado,
+  };
 }
 
 /** Confere a forma mínima de um laudo lido de fora (arquivo JSON ou HTML). */

@@ -22,7 +22,10 @@
     "bench:read": "node scripts/bench-read.ts",
     "bench:analyze": "node scripts/bench-analyze.ts",
     "audit": "npm audit --audit-level=high",
-    "verify:laudo": "node scripts/verify-laudo.ts"
+    "verify:laudo": "node scripts/verify-laudo.ts",
+    "e2e": "node scripts/e2e.ts",
+    "check:secrets": "node scripts/check-secrets.ts",
+    "check:live": "node scripts/check-live.ts"
   },
   "dependencies": {
     "preact": "11.0.1"
@@ -33,8 +36,10 @@
     "@fontsource/jetbrains-mono": "5.3.0",
     "@preact/preset-vite": "2.10.6",
     "@types/node": "26.6.5",
+    "axe-core": "4.14.0",
     "eslint": "10.13.0",
     "fast-check": "4.10.2",
+    "playwright": "1.64.1",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",

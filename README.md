@@ -26,6 +26,8 @@ O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy
 | M3: Laudo em HTML autocontido (sem scripts, CSP própria) e JSON `garimpo-laudo/1`, com hash SHA-256 de integridade                                                                             |                                                       |
 | M3: impressão digital da jazida (SHA-256 por blocos de 4 MiB) e id do build no laudo                                                                                                           |                                                       |
 | M3: Lacre: e-mail, IPv4/IPv6, CPF/CNPJ (com dígitos verificadores), cartão (Luhn), JWT e chaves de API; UUID e telefone opcionais. Marcadores `<EMAIL_1>`; mapa só em memória, baixado à parte |                                                       |
+| M4: testes de robustez (texto aleatório, Lacre, escape, selo adulterado, regexes embutidas contra entradas hostis)                                                                             |                                                       |
+| M4: e2e no Chromium com CSP real e acessibilidade (axe): `npm run build && npm run e2e`                                                                                                        |                                                       |
 | M3: tela do Laudo (`e`), Lacre também nas linhas exibidas, verificador `npm run verify:laudo -- laudo.html --jazida arquivo.log`                                                               |                                                       |
 
 ## Primeiros passos

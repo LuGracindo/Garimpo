@@ -7,3 +7,6 @@ coverage
 /tmp-logs
 *.generated.log
 benchmarks/last.json
+
+# checklist pessoal de publicação (não versionar)
+/docs/publicacao.md
