@@ -244,4 +244,28 @@ describe('laudo (@AUD-01 a @AUD-06)', () => {
     const ruim = await verifyAgainstJazida(laudo, new Blob([alterado]));
     expect(ruim.some((c) => !c.ok)).toBe(true);
   });
+
+  it('padrões próprios entram no laudo só pelo rótulo e pela contagem', async () => {
+    const texto =
+      '2026-10-22T10:00:00Z ERROR [t] a.B - falha no S101_SRV_ALFA\n' +
+      '2026-10-22T10:00:01Z ERROR [t] a.B - falha no S202_SRV_BETA\n';
+    const regra = {
+      nome: 'Servidor interno',
+      rotulo: 'SERVIDOR',
+      padrao: 'S\\d+_SRV_[A-Z]+',
+      ignorarCaixa: false,
+    };
+    const lacre = new Lacre([], [regra]);
+    const laudo = await sealLaudo(buildLaudo(await entrada({ lacre }, texto)), sha256Hex);
+    const json = JSON.stringify(laudo);
+    expect(json).not.toContain('S101_SRV_ALFA');
+    expect(json).not.toContain('S202_SRV_BETA');
+    expect(json).not.toContain('S\\d+_SRV');
+    expect(laudo.lacre.ativo).toBe(true);
+    expect(laudo.lacre.regras).toContain('p:SERVIDOR');
+    expect(laudo.lacre.substituicoes['p:SERVIDOR']).toBeGreaterThan(0);
+    const html = renderLaudoHtml(laudo);
+    expect(html).not.toContain('S101_SRV_ALFA');
+    expect((await verifyLaudo(laudo, sha256Hex)).ok).toBe(true);
+  });
 });

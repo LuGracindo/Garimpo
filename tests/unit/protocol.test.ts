@@ -178,8 +178,23 @@ describe('protocolo UI e Worker (@SEG-08)', () => {
   it('valida impressão digital e varredura do Lacre', () => {
     const base = { requestId: 2, protocolVersion: 1 };
     expect(isUiToWorker({ type: 'fingerprint', ...base })).toBe(true);
-    expect(isUiToWorker({ type: 'lacre-scan', types: ['email', 'cpf'], ...base })).toBe(true);
-    expect(isUiToWorker({ type: 'lacre-scan', types: ['senha'], ...base })).toBe(false);
+    expect(isUiToWorker({ type: 'lacre-scan', types: ['email', 'cpf'], custom: [], ...base })).toBe(
+      true,
+    );
+    expect(isUiToWorker({ type: 'lacre-scan', types: ['senha'], custom: [], ...base })).toBe(false);
+    const regra = {
+      nome: 'Servidor',
+      rotulo: 'SERVIDOR',
+      padrao: 'S\\d+_SRV',
+      ignorarCaixa: false,
+    };
+    expect(isUiToWorker({ type: 'lacre-scan', types: [], custom: [regra], ...base })).toBe(true);
+    expect(
+      isUiToWorker({ type: 'lacre-scan', types: [], custom: [{ ...regra, rotulo: 'x' }], ...base }),
+    ).toBe(false);
+    expect(isUiToWorker({ type: 'lacre-scan', types: [], ...base })).toBe(false);
+    const muitas = Array.from({ length: 21 }, () => regra);
+    expect(isUiToWorker({ type: 'lacre-scan', types: [], custom: muitas, ...base })).toBe(false);
     const fingerprint = {
       metodo: 'sha256-blocos-4MiB',
       tamanhoBloco: 4194304,
@@ -201,5 +216,8 @@ describe('protocolo UI e Worker (@SEG-08)', () => {
     expect(
       isWorkerToUi({ type: 'lacre-scan-result', counts: { senha: 1 }, samples, ...base }),
     ).toBe(false);
+    expect(
+      isWorkerToUi({ type: 'lacre-scan-result', counts: { 'p:SERVIDOR': 2 }, samples, ...base }),
+    ).toBe(true);
   });
 });

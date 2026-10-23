@@ -1055,3 +1055,29 @@ kbd {
   gap: 0.5rem;
   margin: 1rem 0 0.5rem;
 }
+
+.regras-lacre {
+  display: grid;
+  gap: var(--u);
+  margin-top: calc(var(--u) * 2);
+}
+.regra-form {
+  display: grid;
+  gap: var(--u);
+  max-width: 40rem;
+}
+.regra-form .campo {
+  display: grid;
+  gap: 4px;
+}
+.regra-form input[type='text'] {
+  font: inherit;
+  padding: 6px 8px;
+  color: var(--areia);
+  background: var(--argila);
+  border: var(--borda);
+  border-radius: var(--raio);
+}
+.regras-lacre code {
+  overflow-wrap: anywhere;
+}

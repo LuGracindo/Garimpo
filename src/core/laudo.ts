@@ -22,7 +22,7 @@ export const MAX_EXAMPLE_CHARS = 200;
 
 export const LIMITATIONS: readonly string[] = [
   'O agrupamento em pepitas é heurístico (regras fixas): mensagens totalmente livres podem ser agrupadas de forma imperfeita. Confira o gabarito antes de confiar na contagem.',
-  'O Lacre mascara só padrões conhecidos (e-mail, IP, CPF, CNPJ, cartão, JWT, chaves de API e, se ligados, UUID e telefone). Nomes, endereços e dados em texto livre não são detectados. O Lacre reduz o risco de vazamento, mas não é garantia.',
+  'O Lacre mascara só padrões conhecidos (e-mail, IP, CPF, CNPJ, cartão, JWT, chaves de API, se ligados UUID e telefone, e os padrões próprios cadastrados por quem gerou o laudo). Nomes, endereços e dados em texto livre fora desses padrões não são detectados. O Lacre reduz o risco de vazamento, mas não é garantia.',
   'A data e a hora de geração vêm do relógio do aparelho, que pode estar errado. Horários do log sem fuso foram lidos como UTC.',
   'O hash de integridade detecta alteração acidental ou simples, mas não prova autoria e não impede que alguém refaça o hash depois de editar o laudo. Não há assinatura digital.',
 ];
@@ -193,7 +193,12 @@ export function buildLaudo(input: LaudoInput): LaudoData {
   }
   decisoes.push(`Modo de agrupamento: ${s.mode}.`);
   if (lacre && lacre.active) {
-    decisoes.push(`Lacre ligado para: ${[...lacre.types].map((t) => LACRE_LABELS[t]).join(', ')}.`);
+    decisoes.push(
+      `Lacre ligado para: ${[
+        ...[...lacre.types].map((t) => LACRE_LABELS[t]),
+        ...lacre.custom.map((r) => `padrão próprio ${r.rotulo}`),
+      ].join(', ')}.`,
+    );
   } else {
     decisoes.push('Lacre desligado: o conteúdo do laudo não foi mascarado.');
   }
@@ -251,10 +256,18 @@ export function buildLaudo(input: LaudoInput): LaudoData {
     niveis: Object.fromEntries(SEVERITIES.map((level) => [level, s.severityCounts[level]])),
     lacre: {
       ativo: lacre !== null && lacre.active,
-      regras: lacre ? [...lacre.types].sort() : [],
-      substituicoes: Object.fromEntries(
-        LACRE_TYPES.filter((t) => lacre?.types.has(t)).map((t) => [t, lacre?.replacements[t] ?? 0]),
-      ),
+      // Os padrões próprios aparecem só pelo rótulo: o padrão em si pode revelar nomes internos.
+      regras: lacre ? [...lacre.types, ...lacre.custom.map((r) => `p:${r.rotulo}`)].sort() : [],
+      substituicoes: Object.fromEntries([
+        ...LACRE_TYPES.filter((t) => lacre?.types.has(t)).map((t) => [
+          t,
+          lacre?.replacements[t] ?? 0,
+        ]),
+        ...(lacre?.custom ?? []).map((r) => [
+          `p:${r.rotulo}`,
+          lacre?.customReplacements[`p:${r.rotulo}`] ?? 0,
+        ]),
+      ]),
     },
     pepitas,
     decisoes,

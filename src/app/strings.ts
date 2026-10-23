@@ -208,6 +208,38 @@ export const t = {
     uuid: 'UUID (desligado por padrão)',
     'telefone-br': 'Telefone brasileiro (desligado por padrão)',
   },
+  lacreRegrasTitulo: 'Padrões próprios',
+  lacreRegrasAjuda:
+    'Cadastre padrões que só você sabe serem sensíveis, como nomes de servidor ou de cliente. Ficam salvos só neste navegador e valem na tela e no laudo. O laudo mostra o rótulo e a contagem, nunca o padrão.',
+  lacreRegrasNenhuma: 'Nenhum padrão próprio cadastrado.',
+  lacreRegraNome: 'Nome',
+  lacreRegraRotulo: 'Rótulo do marcador (MAIÚSCULAS)',
+  lacreRegraPadrao: 'Padrão (expressão regular)',
+  lacreRegraIgnorar: 'Ignorar maiúsculas e minúsculas',
+  lacreRegraTeste: 'Texto para testar',
+  lacreRegraResultado: 'Resultado',
+  lacreRegraAdicionar: 'Adicionar padrão',
+  lacreRegraRemover: 'Remover',
+  lacreRegraLimite: 'Limite de padrões atingido.',
+  lacreRegraProblemas: {
+    nome: 'Dê um nome de até 40 caracteres.',
+    rotulo:
+      'O rótulo precisa ter de 2 a 20 caracteres: letras maiúsculas, números e _, começando por letra.',
+    'rotulo-reservado':
+      'Esse rótulo já é usado por um tipo embutido (EMAIL, IPV4, CPF…). Escolha outro.',
+    'rotulo-repetido': 'Já existe um padrão com esse rótulo.',
+    'padrao-vazio': 'Escreva o padrão.',
+    'padrao-longo': 'O padrão pode ter no máximo 200 caracteres.',
+    'padrao-invalido': 'Esse padrão não é uma expressão regular válida.',
+    'casa-vazio': 'O padrão casa texto vazio; ele precisa exigir pelo menos um caractere.',
+    'grupo-repetido':
+      'Repetir um grupo com *, + ou {n,m} não é aceito (risco de travar). Repita só caracteres ou classes, como \\d+ ou [A-Z0-9_]+.',
+    referencia: 'Referências a grupos (\\1, \\k) não são aceitas.',
+    quantificadores:
+      'Muitos quantificadores. Use no máximo 8, sendo no máximo 2 sem limite (*, + ou {n,}).',
+    'repeticao-grande': 'Repetições limitadas a no máximo 128 (por exemplo {1,128}).',
+    lenta: 'Esse padrão ficou lento no teste de segurança. Simplifique-o.',
+  },
   lacreNaTela: 'Lacre ligado: valores sensíveis aparecem como marcadores.',
   laudoSecaoJazida: 'Jazida',
   laudoSecaoFormato: 'Formato e agrupamento',

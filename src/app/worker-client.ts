@@ -4,7 +4,7 @@ import workerUrl from '../worker/worker.ts?worker&url';
 import { createScriptUrl } from '../shared/trusted.ts';
 import type { CustomProfileSpec, Preview } from '../core/custom-profile.ts';
 import type { FingerprintInfo } from '../core/laudo.ts';
-import type { LacreType } from '../core/lacre.ts';
+import type { CustomRule, HitKind, LacreType } from '../core/lacre.ts';
 import type { ContextLine } from '../core/context.ts';
 import type { Filter } from '../core/filter.ts';
 import type { Histogram } from '../core/histogram.ts';
@@ -55,7 +55,7 @@ export class RequestCancelled extends Error {
 
 export interface LacreScanReply {
   counts: Record<string, number>;
-  samples: { type: LacreType; antes: string; depois: string }[];
+  samples: { type: HitKind; antes: string; depois: string }[];
 }
 
 export interface AnalysisClient {
@@ -67,7 +67,7 @@ export interface AnalysisClient {
   context(event: number, before: number, after: number): Promise<ContextLine[]>;
   previewProfile(file: Blob, spec: CustomProfileSpec): Promise<Preview>;
   fingerprint(): Promise<FingerprintInfo>;
-  lacreScan(types: LacreType[]): Promise<LacreScanReply>;
+  lacreScan(types: LacreType[], custom: CustomRule[]): Promise<LacreScanReply>;
   /** Derruba o Worker (por exemplo, regex que travou) e cria outro; pedidos pendentes são cancelados. */
   restart(): void;
   dispose(): void;
@@ -196,12 +196,13 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
       }));
       return r.type === 'fingerprint-result' ? r.fingerprint : unexpected();
     },
-    async lacreScan(types) {
+    async lacreScan(types, custom) {
       const r = await ask((requestId) => ({
         type: 'lacre-scan',
         requestId,
         protocolVersion: PROTOCOL_VERSION,
         types,
+        custom,
       }));
       return r.type === 'lacre-scan-result'
         ? { counts: r.counts, samples: r.samples }

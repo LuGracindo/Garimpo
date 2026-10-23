@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AnalysisResult } from '../../core/analyzer.ts';
 import type { CustomProfileSpec } from '../../core/custom-profile.ts';
-import { LACRE_DEFAULT_TYPES, LACRE_TYPES, Lacre, type LacreType } from '../../core/lacre.ts';
+import {
+  LACRE_DEFAULT_TYPES,
+  LACRE_TYPES,
+  Lacre,
+  kindOfRule,
+  type CustomRule,
+  type HitKind,
+  type LacreType,
+} from '../../core/lacre.ts';
 import {
   buildLaudo,
   renderLaudoHtml,
@@ -16,6 +24,7 @@ import { BUILD } from '../build-info.ts';
 import { download, safeFileName } from '../download.ts';
 import { numero } from '../format.ts';
 import { t } from '../strings.ts';
+import { RegrasLacre } from './RegrasLacre.tsx';
 import { RequestCancelled, type AnalysisClient, type LacreScanReply } from '../worker-client.ts';
 
 interface Props {
@@ -27,7 +36,16 @@ interface Props {
   custom: CustomProfileSpec | null;
   lacreTypes: ReadonlySet<LacreType>;
   onLacreTypes: (types: ReadonlySet<LacreType>) => void;
+  rules: CustomRule[];
+  onRules: (rules: CustomRule[]) => void;
+  customOn: boolean;
+  onCustomOn: (on: boolean) => void;
   onBack: () => void;
+}
+
+function labelOf(kind: HitKind, rules: CustomRule[]): string {
+  if (kind in t.lacreTipoLabels) return t.lacreTipoLabels[kind as LacreType];
+  return rules.find((r) => kindOfRule(r) === kind)?.nome ?? kind;
 }
 
 interface Built {
@@ -44,6 +62,10 @@ export function LaudoTela({
   custom,
   lacreTypes,
   onLacreTypes,
+  rules,
+  onRules,
+  customOn,
+  onCustomOn,
   onBack,
 }: Props) {
   const [fp, setFp] = useState<FingerprintInfo | null>(null);
@@ -51,7 +73,9 @@ export function LaudoTela({
   const [scan, setScan] = useState<LacreScanReply | null>(null);
   const [built, setBuilt] = useState<Built | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
-  const typesKey = [...lacreTypes].sort().join(',');
+  const typesKey = `${[...lacreTypes].sort().join(',')}|${customOn ? 'p' : '-'}|${JSON.stringify(rules)}`;
+  const rulesKey = JSON.stringify(rules);
+  const appliedRules = customOn ? rules : [];
 
   useEffect(() => {
     heading.current?.focus();
@@ -75,7 +99,7 @@ export function LaudoTela({
     setScan(null);
     const types = [...LACRE_TYPES];
     client
-      .lacreScan(types)
+      .lacreScan(types, rules)
       .then((result) => {
         if (alive) setScan(result);
       })
@@ -85,13 +109,13 @@ export function LaudoTela({
     return () => {
       alive = false;
     };
-  }, [client]);
+  }, [client, rulesKey]);
 
   // O laudo é refeito (e lacrado) quando a impressão digital chega ou o Lacre muda.
   useEffect(() => {
     if (!fp) return undefined;
     let alive = true;
-    const lacre = new Lacre(lacreTypes);
+    const lacre = new Lacre(lacreTypes, appliedRules);
     const data = buildLaudo({
       build: BUILD,
       generatedAt: new Date().toISOString(),
@@ -120,7 +144,7 @@ export function LaudoTela({
     ? `laudo-${safeFileName(name)}-${laudo.jazida.impressaoDigital.raiz.slice(0, 8)}${laudo.lacre.ativo ? '-lacrado' : ''}`
     : '';
   const mapping = built?.lacre.mapping() ?? [];
-  const active = lacreTypes.size > 0;
+  const active = lacreTypes.size > 0 || customOn;
 
   return (
     <section class="laudo" aria-labelledby="titulo-laudo">
@@ -144,9 +168,11 @@ export function LaudoTela({
           <input
             type="checkbox"
             checked={active}
-            onChange={(e) =>
-              onLacreTypes(e.currentTarget.checked ? new Set(LACRE_DEFAULT_TYPES) : new Set())
-            }
+            onChange={(e) => {
+              const on = e.currentTarget.checked;
+              onLacreTypes(on ? new Set(LACRE_DEFAULT_TYPES) : new Set());
+              onCustomOn(on);
+            }}
           />
           <span>{t.lacreLigado}</span>
         </label>
@@ -171,6 +197,12 @@ export function LaudoTela({
             );
           })}
         </ul>
+        <RegrasLacre
+          rules={rules}
+          counts={scan ? scan.counts : null}
+          onCustomOn={onCustomOn}
+          onRules={onRules}
+        />
         {scan === null ? <p class="nota">{t.lacreVarrendo}</p> : null}
         {scan && scan.samples.length > 0 ? (
           <>
@@ -187,7 +219,7 @@ export function LaudoTela({
                 <tbody>
                   {scan.samples.map((sample, i) => (
                     <tr key={i}>
-                      <td>{t.lacreTipoLabels[sample.type]}</td>
+                      <td>{labelOf(sample.type, rules)}</td>
                       <td class="previa-linha">{sample.antes}</td>
                       <td class="previa-linha">{sample.depois}</td>
                     </tr>

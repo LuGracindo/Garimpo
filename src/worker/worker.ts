@@ -189,7 +189,7 @@ async function runQuery(
         fingerprint,
       };
     } else {
-      const scan = await current.lacreScan(message.types, stale);
+      const scan = await current.lacreScan(message.types, message.custom, stale);
       reply = { type: 'lacre-scan-result', requestId, protocolVersion: PROTOCOL_VERSION, ...scan };
     }
     if (stale() || session !== current) {

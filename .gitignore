@@ -10,3 +10,6 @@ benchmarks/last.json
 
 # checklist pessoal de publicação (não versionar)
 /docs/publicacao.md
+
+# ponteiro local para a base de conhecimento (não versionar)
+/.claude/

@@ -70,6 +70,197 @@ export function isLacreType(value: unknown): value is LacreType {
   return typeof value === 'string' && (LACRE_TYPES as readonly string[]).includes(value);
 }
 
+// ---- padrões próprios ----
+
+/** Regra cadastrada pela pessoa: um padrão que ela sabe ser sensível no log dela. */
+export interface CustomRule {
+  nome: string;
+  /** Nome do marcador: `<ROTULO_1>`. Único entre as regras e diferente dos tipos embutidos. */
+  rotulo: string;
+  /** Expressão regular (sintaxe do JavaScript), validada por `validateCustomRule`. */
+  padrao: string;
+  ignorarCaixa: boolean;
+}
+
+export type HitKind = LacreType | `p:${string}`;
+
+export const MAX_CUSTOM_RULES = 20;
+export const MAX_RULE_PATTERN = 200;
+export const MAX_RULE_NAME = 40;
+/** Cada trecho de texto é varrido em janelas deste tamanho: limita o pior caso de uma regra lenta. */
+export const CUSTOM_WINDOW = 2000;
+const MAX_QUANTIFIERS = 8;
+const MAX_UNBOUNDED = 2;
+const MAX_BOUNDED_REPEAT = 128;
+const RESERVED_LABELS: ReadonlySet<string> = new Set([
+  'EMAIL',
+  'IPV4',
+  'IPV6',
+  'CPF',
+  'CNPJ',
+  'CARTAO',
+  'JWT',
+  'CHAVE',
+  'UUID',
+  'TELEFONE',
+]);
+const LABEL_PATTERN = /^[A-Z][A-Z0-9_]{1,19}$/;
+
+export type RuleProblem =
+  | 'nome'
+  | 'rotulo'
+  | 'rotulo-reservado'
+  | 'rotulo-repetido'
+  | 'padrao-vazio'
+  | 'padrao-longo'
+  | 'padrao-invalido'
+  | 'casa-vazio'
+  | 'grupo-repetido'
+  | 'referencia'
+  | 'quantificadores'
+  | 'repeticao-grande'
+  | 'lenta';
+
+export function kindOfRule(rule: CustomRule): HitKind {
+  return `p:${rule.rotulo}`;
+}
+
+export function isRuleKind(value: unknown): value is `p:${string}` {
+  return typeof value === 'string' && value.startsWith('p:') && LABEL_PATTERN.test(value.slice(2));
+}
+
+/** Olha o padrão sem executá-lo: grupos repetidos, referências e excesso de quantificadores. */
+function staticProblem(pattern: string): RuleProblem | null {
+  let quantifiers = 0;
+  let unbounded = 0;
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i += 1) {
+    const c = pattern.charAt(i);
+    if (c === '\\') {
+      const next = pattern.charAt(i + 1);
+      if (/[1-9]/.test(next) || next === 'k') return 'referencia';
+      i += 1;
+      continue;
+    }
+    if (inClass) {
+      if (c === ']') inClass = false;
+      continue;
+    }
+    if (c === '[') {
+      inClass = true;
+      continue;
+    }
+    const brace = c === '{' ? /^\{(\d+)(?:(,)(\d*))?\}/.exec(pattern.slice(i)) : null;
+    const isQuantifier = c === '*' || c === '+' || brace !== null;
+    if (!isQuantifier) continue;
+    quantifiers += 1;
+    // Um quantificador logo depois de `)` repete um grupo: é onde nascem os padrões catastróficos.
+    if (pattern.charAt(i - 1) === ')') return 'grupo-repetido';
+    const open = brace !== null && brace[2] === ',' && brace[3] === '';
+    if (c === '*' || c === '+' || open) unbounded += 1;
+    if (brace) {
+      const max =
+        brace[2] === ',' ? Number(brace[3] === '' ? brace[1] : brace[3]) : Number(brace[1]);
+      if (max > MAX_BOUNDED_REPEAT) return 'repeticao-grande';
+      i += brace[0].length - 1;
+    }
+  }
+  if (quantifiers > MAX_QUANTIFIERS || unbounded > MAX_UNBOUNDED) return 'quantificadores';
+  return null;
+}
+
+const PROBES: readonly string[] = [
+  'a'.repeat(CUSTOM_WINDOW),
+  '1'.repeat(CUSTOM_WINDOW),
+  `${' '.repeat(CUSTOM_WINDOW)}x`,
+  'ab '.repeat(CUSTOM_WINDOW / 3),
+  '-'.repeat(CUSTOM_WINDOW),
+  'A1_'.repeat(CUSTOM_WINDOW / 3),
+  `${'x'.repeat(CUSTOM_WINDOW - 1)}@`,
+];
+const PROBE_BUDGET_MS = 150;
+
+/** Devolve o problema da regra, ou null se ela pode ser usada. `others` são as demais regras. */
+export function validateCustomRule(
+  rule: CustomRule,
+  others: readonly CustomRule[] = [],
+): RuleProblem | null {
+  const nome = rule.nome.trim();
+  if (nome === '' || nome.length > MAX_RULE_NAME) return 'nome';
+  if (!LABEL_PATTERN.test(rule.rotulo)) return 'rotulo';
+  if (RESERVED_LABELS.has(rule.rotulo)) return 'rotulo-reservado';
+  if (others.some((r) => r.rotulo === rule.rotulo)) return 'rotulo-repetido';
+  if (rule.padrao === '') return 'padrao-vazio';
+  if (rule.padrao.length > MAX_RULE_PATTERN) return 'padrao-longo';
+  const found = staticProblem(rule.padrao);
+  if (found) return found;
+  let regex: RegExp;
+  try {
+    regex = new RegExp(rule.padrao, rule.ignorarCaixa ? 'gi' : 'g');
+  } catch {
+    return 'padrao-invalido';
+  }
+  if (new RegExp(rule.padrao).test('')) return 'casa-vazio';
+  const started = performance.now();
+  for (const probe of PROBES) {
+    regex.lastIndex = 0;
+    Array.from(probe.matchAll(regex));
+  }
+  if (performance.now() - started > PROBE_BUDGET_MS) return 'lenta';
+  return null;
+}
+
+/** Forma mínima de uma regra lida de fora (armazenamento do navegador, mensagem do Worker). */
+export function isCustomRule(value: unknown): value is CustomRule {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v['nome'] === 'string' &&
+    typeof v['rotulo'] === 'string' &&
+    typeof v['padrao'] === 'string' &&
+    typeof v['ignorarCaixa'] === 'boolean' &&
+    v['nome'].length <= MAX_RULE_NAME &&
+    v['padrao'].length <= MAX_RULE_PATTERN &&
+    LABEL_PATTERN.test(v['rotulo'])
+  );
+}
+
+interface CompiledRule {
+  kind: HitKind;
+  regex: RegExp;
+}
+
+function compileRules(rules: readonly CustomRule[]): CompiledRule[] {
+  const out: CompiledRule[] = [];
+  for (const rule of rules.slice(0, MAX_CUSTOM_RULES)) {
+    // Regra sem validação (ex.: vinda de fora) é descartada: nunca executa padrão não verificado.
+    if (staticProblem(rule.padrao) !== null || rule.padrao.length > MAX_RULE_PATTERN) continue;
+    try {
+      out.push({
+        kind: kindOfRule(rule),
+        regex: new RegExp(rule.padrao, rule.ignorarCaixa ? 'gi' : 'g'),
+      });
+    } catch {
+      /* padrão inválido: ignorada */
+    }
+  }
+  return out;
+}
+
+/** Janelas de até CUSTOM_WINDOW caracteres, cortando em espaço quando houver um perto do fim. */
+function* windows(text: string): Generator<[number, string]> {
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(text.length, start + CUSTOM_WINDOW);
+    if (end < text.length) {
+      const space = text.lastIndexOf(' ', end);
+      if (space > end - 100 && space > start) end = space + 1;
+    }
+    yield [start, text.slice(start, end)];
+    start = end;
+  }
+}
+
 // ---- validadores ----
 
 function allSame(digits: string): boolean {
@@ -200,16 +391,31 @@ const DETECTORS: readonly Detector[] = [
 ];
 
 export interface SensitiveHit {
-  type: LacreType;
+  type: HitKind;
   start: number;
   end: number;
   value: string;
 }
 
 /** Acha os trechos sensíveis (sem sobreposição) dos tipos pedidos. Não altera o texto. */
-export function findSensitive(text: string, types: ReadonlySet<LacreType>): SensitiveHit[] {
+export function findSensitive(
+  text: string,
+  types: ReadonlySet<LacreType>,
+  custom: readonly CustomRule[] = [],
+): SensitiveHit[] {
   const input = clip(text);
   const found: (SensitiveHit & { priority: number })[] = [];
+  // Padrões próprios vencem os embutidos quando casam o mesmo trecho (prioridade -1).
+  for (const rule of compileRules(custom)) {
+    for (const [offset, part] of windows(input)) {
+      for (const match of part.matchAll(rule.regex)) {
+        const value = match[0];
+        if (value === '') continue;
+        const start = offset + (match.index ?? 0);
+        found.push({ type: rule.kind, start, end: start + value.length, value, priority: -1 });
+      }
+    }
+  }
   for (const detector of DETECTORS) {
     if (!types.has(detector.type)) continue;
     for (const match of input.matchAll(detector.regex)) {
@@ -238,7 +444,7 @@ export function findSensitive(text: string, types: ReadonlySet<LacreType>): Sens
 
 export interface MarkerEntry {
   marker: string;
-  type: LacreType;
+  type: HitKind;
   original: string;
 }
 
@@ -248,14 +454,19 @@ export interface MarkerEntry {
  */
 export class Lacre {
   readonly types: ReadonlySet<LacreType>;
+  readonly custom: readonly CustomRule[];
   /** Substituições feitas, por tipo (conta repetições do mesmo valor). */
   readonly replacements: Record<LacreType, number>;
+  /** Substituições por padrão próprio, chave `p:ROTULO`. */
+  readonly customReplacements: Record<string, number> = {};
   private readonly markers = new Map<string, string>();
   private readonly entries: MarkerEntry[] = [];
-  private readonly perType = new Map<LacreType, number>();
+  private readonly perType = new Map<HitKind, number>();
 
-  constructor(types: Iterable<LacreType>) {
+  constructor(types: Iterable<LacreType>, custom: readonly CustomRule[] = []) {
     this.types = new Set(types);
+    this.custom = custom.slice(0, MAX_CUSTOM_RULES);
+    for (const rule of this.custom) this.customReplacements[kindOfRule(rule)] = 0;
     this.replacements = Object.fromEntries(LACRE_TYPES.map((t) => [t, 0])) as Record<
       LacreType,
       number
@@ -263,20 +474,24 @@ export class Lacre {
   }
 
   get active(): boolean {
-    return this.types.size > 0;
+    return this.types.size > 0 || this.custom.length > 0;
   }
 
   mask(text: string): string {
     if (!this.active || text === '') return text;
     const input = clip(text);
-    const hits = findSensitive(input, this.types);
+    const hits = findSensitive(input, this.types, this.custom);
     if (hits.length === 0) return input;
     let out = '';
     let cursor = 0;
     for (const hit of hits) {
       out += input.slice(cursor, hit.start) + this.markerFor(hit);
       cursor = hit.end;
-      this.replacements[hit.type] += 1;
+      if (isRuleKind(hit.type)) {
+        this.customReplacements[hit.type] = (this.customReplacements[hit.type] ?? 0) + 1;
+      } else {
+        this.replacements[hit.type] += 1;
+      }
     }
     return out + input.slice(cursor);
   }
@@ -288,7 +503,8 @@ export class Lacre {
     if (known) return known;
     const n = (this.perType.get(hit.type) ?? 0) + 1;
     this.perType.set(hit.type, n);
-    const marker = `<${MARKER_NAMES[hit.type]}_${n}>`;
+    const name = isRuleKind(hit.type) ? hit.type.slice(2) : MARKER_NAMES[hit.type];
+    const marker = `<${name}_${n}>`;
     this.markers.set(key, marker);
     this.entries.push({ marker, type: hit.type, original: hit.value });
     return marker;
@@ -300,6 +516,7 @@ export class Lacre {
   }
 
   totalReplacements(): number {
-    return LACRE_TYPES.reduce((sum, t) => sum + this.replacements[t], 0);
+    const custom = Object.values(this.customReplacements).reduce((sum, n) => sum + n, 0);
+    return LACRE_TYPES.reduce((sum, t) => sum + this.replacements[t], custom);
   }
 }

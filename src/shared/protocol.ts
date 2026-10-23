@@ -6,7 +6,16 @@ import type { ContextLine } from '../core/context.ts';
 import type { FingerprintInfo } from '../core/laudo.ts';
 import { isCustomSpec, type CustomProfileSpec, type Preview } from '../core/custom-profile.ts';
 import { isFilter, type Filter } from '../core/filter.ts';
-import { LACRE_TYPES, isLacreType, type LacreType } from '../core/lacre.ts';
+import {
+  LACRE_TYPES,
+  MAX_CUSTOM_RULES,
+  isCustomRule,
+  isLacreType,
+  isRuleKind,
+  type CustomRule,
+  type HitKind,
+  type LacreType,
+} from '../core/lacre.ts';
 import type { Histogram } from '../core/histogram.ts';
 import {
   NORMALIZATION_MODES,
@@ -61,7 +70,7 @@ export type UiToWorker =
   | ({ type: 'context'; event: number; before: number; after: number } & Envelope)
   | ({ type: 'preview-profile'; file: Blob; spec: CustomProfileSpec } & Envelope)
   | ({ type: 'fingerprint' } & Envelope)
-  | ({ type: 'lacre-scan'; types: LacreType[] } & Envelope)
+  | ({ type: 'lacre-scan'; types: LacreType[]; custom: CustomRule[] } & Envelope)
   | {
       type: 'open';
       requestId: number;
@@ -122,7 +131,7 @@ export type WorkerToUi =
   | ({
       type: 'lacre-scan-result';
       counts: Record<string, number>;
-      samples: { type: LacreType; antes: string; depois: string }[];
+      samples: { type: HitKind; antes: string; depois: string }[];
     } & Envelope)
   | { type: 'cancelled'; requestId: number; protocolVersion: typeof PROTOCOL_VERSION }
   | {
@@ -178,7 +187,15 @@ export function isUiToWorker(value: unknown): value is UiToWorker {
 
   if (value['type'] === 'lacre-scan') {
     const types = value['types'];
-    return Array.isArray(types) && types.length <= LACRE_TYPES.length && types.every(isLacreType);
+    const custom = value['custom'];
+    return (
+      Array.isArray(types) &&
+      types.length <= LACRE_TYPES.length &&
+      types.every(isLacreType) &&
+      Array.isArray(custom) &&
+      custom.length <= MAX_CUSTOM_RULES &&
+      custom.every(isCustomRule)
+    );
   }
 
   if (value['type'] === 'preview-profile') {
@@ -447,13 +464,15 @@ export function isWorkerToUi(value: unknown): value is WorkerToUi {
       const samples = value['samples'];
       return (
         isRecord(counts) &&
-        Object.entries(counts).every(([k, n]) => isLacreType(k) && isSafeInt(n)) &&
+        Object.entries(counts).every(
+          ([k, n]) => (isLacreType(k) || isRuleKind(k)) && isSafeInt(n),
+        ) &&
         Array.isArray(samples) &&
-        samples.length <= LACRE_TYPES.length * 3 &&
+        samples.length <= (LACRE_TYPES.length + MAX_CUSTOM_RULES) * 3 &&
         samples.every(
           (x) =>
             isRecord(x) &&
-            isLacreType(x['type']) &&
+            (isLacreType(x['type']) || isRuleKind(x['type'])) &&
             typeof x['antes'] === 'string' &&
             typeof x['depois'] === 'string',
         )

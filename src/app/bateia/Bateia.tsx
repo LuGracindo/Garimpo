@@ -6,7 +6,8 @@ import type { AnalysisResult } from '../../core/analyzer.ts';
 import { EMPTY_FILTER, filterKey, isEmptyFilter, type Filter } from '../../core/filter.ts';
 import type { CustomProfileSpec } from '../../core/custom-profile.ts';
 import type { Histogram } from '../../core/histogram.ts';
-import { Lacre, type LacreType } from '../../core/lacre.ts';
+import { Lacre, type CustomRule, type LacreType } from '../../core/lacre.ts';
+import { loadRules, storeRules } from '../lacre-regras.ts';
 import { megabytes, numero } from '../format.ts';
 import {
   OCCURRENCE_EVENT,
@@ -55,10 +56,12 @@ export function Bateia({
   const [atalhos, setAtalhos] = useState(readShortcutsEnabled);
   const [view, setView] = useState<'bateia' | 'laudo'>('bateia');
   const [lacreTypes, setLacreTypes] = useState<ReadonlySet<LacreType>>(new Set());
-  const lacreKey = [...lacreTypes].sort().join(',');
+  const [rules, setRules] = useState<CustomRule[]>(loadRules);
+  const [customOn, setCustomOn] = useState(false);
+  const lacreKey = `${[...lacreTypes].sort().join(',')}|${customOn ? JSON.stringify(rules) : ''}`;
   // Uma instância só para exibição; o laudo usa a sua, para marcadores determinísticos.
   const mask = useMemo(() => {
-    const lacre = new Lacre(lacreTypes);
+    const lacre = new Lacre(lacreTypes, customOn ? rules : []);
     return (text: string): string => lacre.mask(text);
   }, [lacreKey]);
 
@@ -191,6 +194,13 @@ export function Bateia({
           custom={custom}
           lacreTypes={lacreTypes}
           onLacreTypes={setLacreTypes}
+          rules={rules}
+          onRules={(next) => {
+            setRules(next);
+            storeRules(next);
+          }}
+          customOn={customOn}
+          onCustomOn={setCustomOn}
           onBack={() => setView('bateia')}
         />
       ) : (

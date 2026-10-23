@@ -1,3 +1,4 @@
+import { detectProfile } from '../../src/core/detect.ts';
 import { describe, expect, it } from 'vitest';
 import { normalizeLevel } from '../../src/core/levels.ts';
 import {
@@ -118,6 +119,41 @@ describe('perfil http-combined (@RF-13)', () => {
 
   it('não reconhece linhas de outro formato', () => {
     expect(httpCombinedProfile.parse('2026-10-22T14:03:11Z INFO ok')).toBeNull();
+  });
+});
+
+describe('perfil lvl-dash com a data antes do nível (@RF-13)', () => {
+  const linha = (nivel: number, resto: string) =>
+    `2026-09-30 22:44:03:051 - Lvl: ${nivel} - ${resto}`;
+
+  it('extrai tempo, nível numérico e mensagem', () => {
+    expect(lvlDashProfile.parse(linha(1, 'Task 3: Erro ao enviar o lote'))).toEqual({
+      timeMs: Date.UTC(2026, 8, 30, 22, 44, 3, 51),
+      level: 'ERROR',
+      message: 'Task 3: Erro ao enviar o lote',
+    });
+  });
+
+  it('mapeia os números: 0 DEBUG, 1 ERROR, 2 WARN, 3 e 4 INFO, outros INFO', () => {
+    const nivel = (n: number) => lvlDashProfile.parse(linha(n, 'x'))?.level;
+    expect([0, 1, 2, 3, 4, 7, 10].map(nivel)).toEqual([
+      'DEBUG',
+      'ERROR',
+      'WARN',
+      'INFO',
+      'INFO',
+      'INFO',
+      'INFO',
+    ]);
+  });
+
+  it('linhas sem esse formato não casam e são detectadas com confiança', () => {
+    expect(lvlDashProfile.parse('Lvl: x - sem tempo')).toBeNull();
+    expect(lvlDashProfile.parse('texto qualquer')).toBeNull();
+    const amostra = Array.from({ length: 50 }, (_, i) => linha(i % 5, `mensagem ${i}`));
+    const detection = detectProfile(['Programa v1 (cabeçalho)', ...amostra]);
+    expect(detection.best).toBe('lvl-dash');
+    expect(detection.confident).toBe(true);
   });
 });
 

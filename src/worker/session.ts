@@ -10,7 +10,15 @@ import { selectEvents, type Axis } from '../core/query.ts';
 import { TextScanner } from '../core/textsearch.ts';
 import { SEVERITIES } from '../core/types.ts';
 import type { OccurrenceRowMessage } from '../shared/protocol.ts';
-import { LACRE_TYPES, Lacre, findSensitive, type LacreType } from '../core/lacre.ts';
+import {
+  LACRE_TYPES,
+  Lacre,
+  findSensitive,
+  kindOfRule,
+  type CustomRule,
+  type HitKind,
+  type LacreType,
+} from '../core/lacre.ts';
 import { fingerprintBlob, type Fingerprint } from './fingerprint.ts';
 import { readAlignedChunks, type BlobLike } from './reader.ts';
 import { createInProcessScanner, type RegexScanner } from './regex-scan.ts';
@@ -42,13 +50,13 @@ function textKey(text: string, caseSensitive: boolean, regex: boolean): string {
 export const LACRE_SAMPLES_PER_TYPE = 3;
 
 export interface LacreSample {
-  type: LacreType;
+  type: HitKind;
   antes: string;
   depois: string;
 }
 
 export interface LacreScan {
-  counts: Record<LacreType, number>;
+  counts: Record<string, number>;
   samples: LacreSample[];
 }
 
@@ -274,11 +282,18 @@ export class Session {
    * Conta quanto dado sensível há no arquivo inteiro, por tipo, e guarda poucos exemplos
    * (antes e depois da máscara) para a pessoa conferir o que o Lacre vai fazer.
    */
-  async lacreScan(types: readonly LacreType[], isCancelled: () => boolean): Promise<LacreScan> {
+  async lacreScan(
+    types: readonly LacreType[],
+    custom: readonly CustomRule[],
+    isCancelled: () => boolean,
+  ): Promise<LacreScan> {
     const wanted = new Set(types);
-    const counts = Object.fromEntries(LACRE_TYPES.map((t) => [t, 0])) as Record<LacreType, number>;
+    const counts: Record<string, number> = Object.fromEntries([
+      ...LACRE_TYPES.map((t) => [t, 0]),
+      ...custom.map((r) => [kindOfRule(r), 0]),
+    ]);
     const samples: LacreSample[] = [];
-    const sampled = new Map<LacreType, number>();
+    const sampled = new Map<HitKind, number>();
     const decoder = new TextDecoder('utf-8');
     const stop = (): boolean => this.disposed || isCancelled();
 
@@ -291,14 +306,14 @@ export class Session {
         if (end === -1) end = chunk.bytes.length;
         const line = decoder.decode(chunk.bytes.subarray(position, end));
         position = next;
-        const hits = findSensitive(line, wanted);
+        const hits = findSensitive(line, wanted, custom);
         for (const hit of hits) {
-          counts[hit.type] += 1;
+          counts[hit.type] = (counts[hit.type] ?? 0) + 1;
           const taken = sampled.get(hit.type) ?? 0;
           if (taken < LACRE_SAMPLES_PER_TYPE) {
             sampled.set(hit.type, taken + 1);
             const antes = line.length > 300 ? line.slice(0, 300) : line;
-            samples.push({ type: hit.type, antes, depois: new Lacre(wanted).mask(antes) });
+            samples.push({ type: hit.type, antes, depois: new Lacre(wanted, custom).mask(antes) });
           }
         }
         inBatch += 1;

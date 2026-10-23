@@ -152,11 +152,16 @@ export const httpCombinedProfile: Profile = {
   },
 };
 
-// Perfil lvl-dash: `Lvl: 10 - ------------ - 2026-01-15 10:00:00:123 - T1234 - User internal - mensagem`.
-// O número do nível (Lvl) e o rótulo vêm do próprio sistema: 01 error, 02 warning, 10 sem rótulo.
-// Sem rótulo reconhecido, vale o número: 0 FATAL, 1 ERROR, 2 WARN, demais INFO.
+// Perfil lvl-dash: o nível numérico vem num campo `Lvl: N`, em dois arranjos:
+//   A) `Lvl: 10 - ------------ - 2026-01-15 10:00:00:123 - T1234 - User internal - mensagem`
+//   B) `2026-01-15 10:00:00:123 - Lvl: 1 - mensagem`
+// No arranjo A o rótulo vem do próprio sistema (01 error, 02 warning, 10 sem rótulo); sem rótulo
+// reconhecido, vale o número: 0 FATAL, 1 ERROR, 2 WARN, demais INFO. No arranjo B não há rótulo:
+// 1 ERROR, 2 WARN, 3 e 4 INFO e 0 DEBUG (linhas de partida e configuração); outros números, INFO.
 const LVL_DASH =
   /^Lvl:\s*(\d+)\s+-\s+(.{1,12}?)\s+-\s+(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[:.,](\d{1,3})\s+-\s+(\S+)\s+-\s+(.*)$/;
+const LVL_DASH_TIME_FIRST =
+  /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[:.,](\d{1,3})\s+-\s+Lvl:\s*(\d+)\s+-\s+(.*)$/;
 
 function lvlDashLevel(number: number, label: string): Severity {
   const named = normalizeLevel(label);
@@ -167,20 +172,35 @@ function lvlDashLevel(number: number, label: string): Severity {
   return 'INFO';
 }
 
+function lvlDashTimeFirstLevel(number: number): Severity {
+  if (number === 0) return 'DEBUG';
+  if (number === 1) return 'ERROR';
+  if (number === 2) return 'WARN';
+  return 'INFO';
+}
+
 export const lvlDashProfile: Profile = {
   id: 'lvl-dash',
   continuesAnyLine: false,
   parse(line) {
     const m = LVL_DASH.exec(line);
-    if (!m) return null;
-    const rest = m[7] ?? '';
-    // Depois do tempo e da thread vem o contexto ("User internal"), um " - " e a mensagem.
-    const cut = rest.indexOf(' - ');
-    const message = cut === -1 ? rest : rest.slice(cut + 3);
+    if (m) {
+      const rest = m[7] ?? '';
+      // Depois do tempo e da thread vem o contexto ("User internal"), um " - " e a mensagem.
+      const cut = rest.indexOf(' - ');
+      const message = cut === -1 ? rest : rest.slice(cut + 3);
+      return {
+        timeMs: parseIsoTime(`${m[3] ?? ''} ${m[4] ?? ''}.${m[5] ?? ''}`),
+        level: lvlDashLevel(Number(m[1]), (m[2] ?? '').trim()),
+        message,
+      };
+    }
+    const t = LVL_DASH_TIME_FIRST.exec(line);
+    if (!t) return null;
     return {
-      timeMs: parseIsoTime(`${m[3] ?? ''} ${m[4] ?? ''}.${m[5] ?? ''}`),
-      level: lvlDashLevel(Number(m[1]), (m[2] ?? '').trim()),
-      message,
+      timeMs: parseIsoTime(`${t[1] ?? ''} ${t[2] ?? ''}.${t[3] ?? ''}`),
+      level: lvlDashTimeFirstLevel(Number(t[4])),
+      message: t[5] ?? '',
     };
   },
 };

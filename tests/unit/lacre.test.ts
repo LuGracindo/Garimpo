@@ -7,7 +7,10 @@ import {
   findSensitive,
   isValidCard,
   isValidCnpj,
+  isCustomRule,
   isValidCpf,
+  validateCustomRule,
+  type CustomRule,
   type LacreType,
 } from '../../src/core/lacre.ts';
 
@@ -194,5 +197,99 @@ describe('Lacre: detecção e máscara (@RF-40, @RF-41)', () => {
     const masked = new Lacre(padrao).mask(grande);
     // O que passa do limite é descartado, e o que fica é mascarado.
     expect(masked.includes('@')).toBe(false);
+  });
+});
+
+describe('padrões próprios (@RF-42)', () => {
+  const servidor: CustomRule = {
+    nome: 'Servidor',
+    rotulo: 'SERVIDOR',
+    padrao: 'S\\d+_SRV_[A-Z]+',
+    ignorarCaixa: false,
+  };
+
+  it('mascara com marcador numerado e consistente, junto com os tipos embutidos', () => {
+    const lacre = new Lacre(['email'], [servidor]);
+    const out = lacre.mask('S1_SRV_A falhou para ana@x.com; S2_SRV_B ok; S1_SRV_A de novo');
+    expect(out).toBe('<SERVIDOR_1> falhou para <EMAIL_1>; <SERVIDOR_2> ok; <SERVIDOR_1> de novo');
+    expect(lacre.customReplacements['p:SERVIDOR']).toBe(3);
+    expect(lacre.totalReplacements()).toBe(4);
+    expect(lacre.mapping().find((m) => m.marker === '<SERVIDOR_1>')?.original).toBe('S1_SRV_A');
+  });
+
+  it('funciona sozinho (sem tipos embutidos) e fica ativo', () => {
+    const lacre = new Lacre([], [servidor]);
+    expect(lacre.active).toBe(true);
+    expect(lacre.mask('x S9_SRV_Z y')).toBe('x <SERVIDOR_1> y');
+    expect(new Lacre([], []).active).toBe(false);
+  });
+
+  it('vence um tipo embutido que casa o mesmo trecho', () => {
+    const ip: CustomRule = {
+      nome: 'Rede',
+      rotulo: 'REDE',
+      padrao: '10\\.0\\.0\\.\\d+',
+      ignorarCaixa: false,
+    };
+    expect(new Lacre(['ipv4'], [ip]).mask('de 10.0.0.7 e 8.8.8.8')).toBe('de <REDE_1> e <IPV4_1>');
+  });
+
+  it('ignorarCaixa vale só quando pedido', () => {
+    const base = { nome: 'Cliente', rotulo: 'CLIENTE', padrao: 'acme' };
+    expect(new Lacre([], [{ ...base, ignorarCaixa: false }]).mask('ACME acme')).toBe(
+      'ACME <CLIENTE_1>',
+    );
+    expect(new Lacre([], [{ ...base, ignorarCaixa: true }]).mask('ACME acme')).toBe(
+      '<CLIENTE_1> <CLIENTE_2>',
+    );
+  });
+
+  it('não casa nada além do limite de janela sem travar, e acha valores em textos longos', () => {
+    const longo = `${'x '.repeat(5000)}S7_SRV_FIM`;
+    expect(new Lacre([], [servidor]).mask(longo)).toContain('<SERVIDOR_1>');
+    const hostil = 'a'.repeat(20_000);
+    const inicio = performance.now();
+    new Lacre([], [{ nome: 'x', rotulo: 'XIS', padrao: 'a+b', ignorarCaixa: false }]).mask(hostil);
+    expect(performance.now() - inicio).toBeLessThan(2000);
+  });
+
+  it('aceita regras boas e recusa as perigosas ou malformadas', () => {
+    expect(validateCustomRule(servidor)).toBeNull();
+    const com = (padrao: string, extra: Partial<CustomRule> = {}): CustomRule => ({
+      ...servidor,
+      padrao,
+      ...extra,
+    });
+    expect(validateCustomRule(com('(a+)+b'))).toBe('grupo-repetido');
+    expect(validateCustomRule(com('(a|aa)*'))).toBe('grupo-repetido');
+    expect(validateCustomRule(com('(ab){2,5}'))).toBe('grupo-repetido');
+    expect(validateCustomRule(com('(a)\\1'))).toBe('referencia');
+    expect(validateCustomRule(com('a*'))).toBe('casa-vazio');
+    expect(validateCustomRule(com('a+b+c+'))).toBe('quantificadores');
+    expect(validateCustomRule(com('a{1,999}'))).toBe('repeticao-grande');
+    expect(validateCustomRule(com('['))).toBe('padrao-invalido');
+    expect(validateCustomRule(com(''))).toBe('padrao-vazio');
+    expect(validateCustomRule(com('a'.repeat(201)))).toBe('padrao-longo');
+    expect(validateCustomRule(com('abc', { rotulo: 'email' }))).toBe('rotulo');
+    expect(validateCustomRule(com('abc', { rotulo: 'EMAIL' }))).toBe('rotulo-reservado');
+    expect(validateCustomRule(com('abc', { nome: '  ' }))).toBe('nome');
+    expect(validateCustomRule(com('abc'), [servidor])).toBe('rotulo-repetido');
+  });
+
+  it('regra sem validação nunca é executada (descartada na compilação)', () => {
+    const perigosa: CustomRule = {
+      nome: 'x',
+      rotulo: 'PERIGO',
+      padrao: '(a+)+$',
+      ignorarCaixa: false,
+    };
+    expect(new Lacre([], [perigosa]).mask(`${'a'.repeat(40)}!`)).toBe(`${'a'.repeat(40)}!`);
+  });
+
+  it('isCustomRule confere a forma lida de fora', () => {
+    expect(isCustomRule(servidor)).toBe(true);
+    expect(isCustomRule({ ...servidor, rotulo: 'minusculo' })).toBe(false);
+    expect(isCustomRule({ ...servidor, ignorarCaixa: 'sim' })).toBe(false);
+    expect(isCustomRule(null)).toBe(false);
   });
 });

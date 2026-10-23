@@ -165,7 +165,7 @@ describe('sessão de consulta (@RF-25, @RF-26, @RF-27)', () => {
     const fp = await session.fingerprint(() => false);
     expect(fp.bytes).toBe(new TextEncoder().encode(texto).length);
     expect(fp.raiz).toMatch(/^[0-9a-f]{64}$/);
-    const scan = await session.lacreScan(['email', 'ipv4'], () => false);
+    const scan = await session.lacreScan(['email', 'ipv4'], [], () => false);
     expect(scan.counts.email).toBe(2);
     expect(scan.counts.ipv4).toBe(1);
     expect(scan.counts.cpf).toBe(0);
@@ -174,10 +174,30 @@ describe('sessão de consulta (@RF-25, @RF-26, @RF-27)', () => {
     expect(amostra?.depois).not.toContain('ana@empresa.com');
     let erro: unknown;
     try {
-      await session.lacreScan(['email'], () => true);
+      await session.lacreScan(['email'], [], () => true);
     } catch (e) {
       erro = e;
     }
     expect(erro instanceof Superseded).toBe(true);
+  });
+
+  it('varredura do Lacre conta e exemplifica padrões próprios', async () => {
+    const texto =
+      '2026-10-22T10:00:00Z ERROR [t] a.B - falha no servidor S101_SRV_ALFA e S202_SRV_BETA\n' +
+      '2026-10-22T10:00:01Z INFO [t] a.B - ok S101_SRV_ALFA\n' +
+      '2026-10-22T10:00:02Z INFO [t] a.B - nada\n';
+    const { session } = await abrir(texto);
+    const regra = {
+      nome: 'Servidor',
+      rotulo: 'SERVIDOR',
+      padrao: 'S\\d+_SRV_[A-Z]+',
+      ignorarCaixa: false,
+    };
+    const scan = await session.lacreScan([], [regra], () => false);
+    expect(scan.counts['p:SERVIDOR']).toBe(3);
+    const amostra = scan.samples.find((x) => x.type === 'p:SERVIDOR');
+    expect(amostra?.antes).toContain('S101_SRV_ALFA');
+    expect(amostra?.depois).toContain('<SERVIDOR_1>');
+    expect(amostra?.depois).not.toContain('S101_SRV_ALFA');
   });
 });
