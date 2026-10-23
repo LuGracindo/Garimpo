@@ -39,7 +39,11 @@ function Selo({ state }: { state: SealState }) {
   const ajuda =
     state === 'lacrado' ? t.seloLacradoAjuda : state === 'sem-lacre' ? t.seloSemLacreAjuda : '';
   const classe =
-    state === 'lacrado' ? 'selo-lacrado' : state === 'sem-lacre' ? 'selo-sem-lacre' : 'selo-testando';
+    state === 'lacrado'
+      ? 'selo-lacrado'
+      : state === 'sem-lacre'
+        ? 'selo-sem-lacre'
+        : 'selo-testando';
 
   return (
     <span class={`selo ${classe}`} title={ajuda}>

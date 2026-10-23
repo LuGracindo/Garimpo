@@ -8,13 +8,13 @@ O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy
 
 ## Estado: marco M0 (fundação)
 
-| Pronto | Ainda não |
-|---|---|
-| Configuração (TypeScript estrito, Vite, ESLint com regras de segurança, Prettier, CI) | Detecção de formato, fingerprint e pepitas (M1) |
-| Identidade: tokens dos dois temas, logotipo, fontes locais, tela inicial | Perfil (linha do tempo), Peneira, contexto (M2) |
-| Selo **Lacrado** com autoteste real da CSP | Laudo, hashes e Lacre (M3) |
-| Protocolo UI↔Worker validado, leitor em streaming, cancelamento | Endurecimento, e2e e acessibilidade automatizada (M4) |
-| Gerador determinístico de logs fictícios e benchmark de leitura | Publicação (M5) |
+| Pronto                                                                                | Ainda não                                             |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Configuração (TypeScript estrito, Vite, ESLint com regras de segurança, Prettier, CI) | Detecção de formato, fingerprint e pepitas (M1)       |
+| Identidade: tokens dos dois temas, logotipo, fontes locais, tela inicial              | Perfil (linha do tempo), Peneira, contexto (M2)       |
+| Selo **Lacrado** com autoteste real da CSP                                            | Laudo, hashes e Lacre (M3)                            |
+| Protocolo UI↔Worker validado, leitor em streaming, cancelamento                       | Endurecimento, e2e e acessibilidade automatizada (M4) |
+| Gerador determinístico de logs fictícios e benchmark de leitura                       | Publicação (M5)                                       |
 
 ## Primeiros passos
 
@@ -47,11 +47,11 @@ Perfis do gerador: `iso-level`, `jsonl`, `http-combined`.
 
 Conecte o repositório privado em Workers & Pages > Create application > Pages > Connect to Git.
 
-| Campo | Valor |
-|---|---|
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Variável de ambiente | `NODE_VERSION=22` |
+| Campo                  | Valor             |
+| ---------------------- | ----------------- |
+| Build command          | `npm run build`   |
+| Build output directory | `dist`            |
+| Variável de ambiente   | `NODE_VERSION=22` |
 
 Os headers de segurança estão em `public/_headers` e são copiados para `dist/`. Depois do primeiro deploy, confira no navegador (aba Rede) que a resposta traz a CSP e que o selo mostra **Lacrado**.
 

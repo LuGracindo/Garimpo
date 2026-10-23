@@ -38,7 +38,8 @@ export async function writeSyntheticLog(
   return { bytes, lines };
 }
 
-const isMain = process.argv[1] !== undefined && import.meta.url.endsWith(process.argv[1].split('/').pop() ?? '');
+const isMain =
+  process.argv[1] !== undefined && import.meta.url.endsWith(process.argv[1].split('/').pop() ?? '');
 
 if (isMain) {
   const out = arg('out');
@@ -47,7 +48,9 @@ if (isMain) {
   const seed = Number(arg('seed', '1'));
 
   if (!out || !PROFILES.includes(profile) || !Number.isFinite(sizeMb) || sizeMb <= 0) {
-    console.error('Uso: node scripts/gen-logs.ts --out <arquivo> [--profile iso-level|jsonl|http-combined] [--size-mb 10] [--seed 1]');
+    console.error(
+      'Uso: node scripts/gen-logs.ts --out <arquivo> [--profile iso-level|jsonl|http-combined] [--size-mb 10] [--seed 1]',
+    );
     process.exit(1);
   }
 

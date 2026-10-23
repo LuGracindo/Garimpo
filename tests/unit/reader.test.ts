@@ -42,7 +42,8 @@ describe('leitor em streaming (@RF-02, @RNF-03)', () => {
       fc.asyncProperty(bytes, fc.integer({ min: 1, max: 64 }), async (list, blockSize) => {
         const data = Uint8Array.from(list);
         const chunks = [];
-        for await (const chunk of readAlignedChunks(new Blob([data]), blockSize)) chunks.push(chunk);
+        for await (const chunk of readAlignedChunks(new Blob([data]), blockSize))
+          chunks.push(chunk);
 
         let expectedStart = 0;
         const parts: number[] = [];

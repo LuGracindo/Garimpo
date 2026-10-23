@@ -45,7 +45,12 @@ export function utf8Length(text: string): number {
 
 const NAMES = ['ana', 'bruno', 'carla', 'diego', 'elisa', 'fabio', 'gabi', 'hugo', 'iara', 'joao'];
 const THREADS = ['worker-1', 'worker-2', 'worker-3', 'http-nio-8080-exec-4', 'scheduler-1'];
-const LOGGERS = ['app.pedidos.PedidoService', 'app.db.Pool', 'app.auth.Sessao', 'app.fila.Consumidor'];
+const LOGGERS = [
+  'app.pedidos.PedidoService',
+  'app.db.Pool',
+  'app.auth.Sessao',
+  'app.fila.Consumidor',
+];
 const IP_PREFIXES = ['192.0.2.', '198.51.100.', '203.0.113.'];
 const PATHS = ['/api/pedidos', '/api/clientes', '/api/estoque', '/api/relatorios', '/login'];
 const FRAMES = [
@@ -103,7 +108,8 @@ function fakeToken(rng: () => number): string {
 
 function makeEvent(rng: () => number, timeMs: number): Event {
   const roll = rng();
-  const level: Level = roll < 0.12 ? 'DEBUG' : roll < 0.72 ? 'INFO' : roll < 0.86 ? 'WARN' : 'ERROR';
+  const level: Level =
+    roll < 0.12 ? 'DEBUG' : roll < 0.72 ? 'INFO' : roll < 0.86 ? 'WARN' : 'ERROR';
   const ip = `${pick(rng, IP_PREFIXES)}${int(rng, 1, 254)}`;
   const email = `${pick(rng, NAMES)}.${int(rng, 1, 400)}@example.test`;
   const path = `${pick(rng, PATHS)}/${int(rng, 1, 99999)}`;
@@ -116,14 +122,20 @@ function makeEvent(rng: () => number, timeMs: number): Event {
     const kind = int(rng, 0, 3);
     if (kind === 0) {
       message = `Falha ao conectar ao banco ${ip}:${pick(rng, [5432, 5433])} após ${int(rng, 100, 9000)} ms`;
-      stack = ['java.sql.SQLTimeoutException: connection timed out', ...FRAMES.slice(0, 3).map((f) => `\tat ${f}`)];
+      stack = [
+        'java.sql.SQLTimeoutException: connection timed out',
+        ...FRAMES.slice(0, 3).map((f) => `\tat ${f}`),
+      ];
     } else if (kind === 1) {
       message = `Timeout na requisição ${id} para ${path}`;
     } else if (kind === 2) {
       message = `Pagamento recusado para ${email}, cartão 4111111111111111`;
     } else {
       message = `Erro inesperado ao processar o pedido ${int(rng, 1, 999999)}`;
-      stack = ['java.lang.NullPointerException: valor ausente', ...FRAMES.slice(1, 5).map((f) => `\tat ${f}`)];
+      stack = [
+        'java.lang.NullPointerException: valor ausente',
+        ...FRAMES.slice(1, 5).map((f) => `\tat ${f}`),
+      ];
     }
     status = pick(rng, [500, 502, 503, 504]);
   } else if (level === 'WARN') {

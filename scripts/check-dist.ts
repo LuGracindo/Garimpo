@@ -35,7 +35,8 @@ export function checkDist(dist: string): string[] {
   const files = listFiles(dist);
   for (const file of files.filter((f) => f.endsWith('.css'))) {
     const css = readFileSync(file, 'utf8');
-    if (/url\(\s*["']?data:/i.test(css)) problems.push(`${file}: data: URI em CSS (font-src não permite)`);
+    if (/url\(\s*["']?data:/i.test(css))
+      problems.push(`${file}: data: URI em CSS (font-src não permite)`);
     for (const match of css.matchAll(/url\(\s*["']?(https?:)?\/\/[^)]*\)/gi)) {
       problems.push(`${file}: URL externa em CSS (${match[0]})`);
     }
@@ -50,7 +51,12 @@ export function checkDist(dist: string): string[] {
     problems.push('_headers ausente no build (headers de segurança não seriam aplicados)');
   } else {
     const headers = readFileSync(headersPath, 'utf8');
-    for (const required of ["connect-src 'none'", "default-src 'none'", 'nosniff', 'Referrer-Policy: no-referrer']) {
+    for (const required of [
+      "connect-src 'none'",
+      "default-src 'none'",
+      'nosniff',
+      'Referrer-Policy: no-referrer',
+    ]) {
       if (!headers.includes(required)) problems.push(`_headers: faltando ${required}`);
     }
   }

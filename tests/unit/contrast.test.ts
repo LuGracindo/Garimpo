@@ -13,6 +13,8 @@ describe('identidade visual (@RNF-06)', () => {
 
   it('todos os pares de cor exigidos passam nos dois temas', () => {
     const falhas = evaluate(css).filter((r) => !r.ok);
-    expect(falhas.map((r) => `${r.tema}: ${r.fg} sobre ${r.bg} = ${r.ratio.toFixed(2)}`)).toEqual([]);
+    expect(falhas.map((r) => `${r.tema}: ${r.fg} sobre ${r.bg} = ${r.ratio.toFixed(2)}`)).toEqual(
+      [],
+    );
   });
 });

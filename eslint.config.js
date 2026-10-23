@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 // Nada de APIs que interpretam HTML ou código a partir de texto.
 const restritos = [
   {
-    selector: "AssignmentExpression[left.property.name=/^(innerHTML|outerHTML)$/]",
+    selector: 'AssignmentExpression[left.property.name=/^(innerHTML|outerHTML)$/]',
     message: 'SEG-03: proibido atribuir innerHTML/outerHTML. Use nós de texto.',
   },
   {
@@ -12,7 +12,8 @@ const restritos = [
     message: 'SEG-03: proibido insertAdjacentHTML.',
   },
   {
-    selector: "CallExpression[callee.object.name='document'][callee.property.name=/^(write|writeln)$/]",
+    selector:
+      "CallExpression[callee.object.name='document'][callee.property.name=/^(write|writeln)$/]",
     message: 'SEG-03: proibido document.write.',
   },
   {
@@ -24,7 +25,8 @@ const restritos = [
     message: 'SEG-08: proibido importScripts.',
   },
   {
-    selector: "CallExpression[callee.property.name=/^(readText|read)$/][callee.object.property.name='clipboard']",
+    selector:
+      "CallExpression[callee.property.name=/^(readText|read)$/][callee.object.property.name='clipboard']",
     message: 'SEG-14: a área de transferência é somente escrita.',
   },
 ];

@@ -2,18 +2,18 @@
 
 Fonte: SDD, seção 16.1, e seção 19 (decisões de 22 de outubro de 2026). Cada decisão que mudar deve virar um arquivo `NNNN-titulo.md` neste diretório.
 
-| ID | Decisão | Status |
-|---|---|---|
-| ADR-01 | CSP com `connect-src 'none'` como garantia de sigilo | Aceito |
-| ADR-02 | Sem backend na v1 | Aceito |
-| ADR-03 | Guardar offsets e reler sob demanda, em vez de manter as linhas na memória | Aceito |
-| ADR-04 | Preact e gráficos próprios | Aceito |
-| ADR-05 | Impressão digital da jazida por blocos com Web Crypto | Proposto |
-| ADR-06 | A chave da pepita é o gabarito exato, não um hash | Aceito |
-| ADR-07 | Código privado; só a aplicação compilada é publicada | Decidido |
-| ADR-08 | Um Worker na v1 | Aceito |
-| ADR-09 | Agrupamento por regras, não por IA | Aceito |
-| ADR-10 | Sem telemetria no cliente | Aceito |
+| ID     | Decisão                                                                    | Status   |
+| ------ | -------------------------------------------------------------------------- | -------- |
+| ADR-01 | CSP com `connect-src 'none'` como garantia de sigilo                       | Aceito   |
+| ADR-02 | Sem backend na v1                                                          | Aceito   |
+| ADR-03 | Guardar offsets e reler sob demanda, em vez de manter as linhas na memória | Aceito   |
+| ADR-04 | Preact e gráficos próprios                                                 | Aceito   |
+| ADR-05 | Impressão digital da jazida por blocos com Web Crypto                      | Proposto |
+| ADR-06 | A chave da pepita é o gabarito exato, não um hash                          | Aceito   |
+| ADR-07 | Código privado; só a aplicação compilada é publicada                       | Decidido |
+| ADR-08 | Um Worker na v1                                                            | Aceito   |
+| ADR-09 | Agrupamento por regras, não por IA                                         | Aceito   |
+| ADR-10 | Sem telemetria no cliente                                                  | Aceito   |
 
 ## Ajustes surgidos na implementação do M0
 
