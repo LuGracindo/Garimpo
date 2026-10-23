@@ -4,7 +4,6 @@ _Peneire o log. Encontre a pepita._ Análise de logs que não sai da sua máquin
 
 Aplicação web estática, 100% no navegador, sem backend. Código privado; apenas a aplicação compilada é publicada, para uso pessoal.
 
-
 ## Estado: marco M3 completo (laudo, hashes e Lacre)
 
 | Pronto                                                                                                                                                                                         | Ainda não                                             |
