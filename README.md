@@ -4,7 +4,6 @@ _Peneire o log. Encontre a pepita._ Análise de logs que não sai da sua máquin
 
 Aplicação web estática, 100% no navegador, sem backend. Código privado; apenas a aplicação compilada é publicada, para uso pessoal.
 
-O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy>. Em caso de dúvida, o SDD (principalmente a seção 19, de decisões) é a referência.
 
 ## Estado: marco M3 completo (laudo, hashes e Lacre)
 
