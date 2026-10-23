@@ -20,6 +20,7 @@
     "check:contrast": "node scripts/check-contrast.ts",
     "gen:logs": "node scripts/gen-logs.ts",
     "bench:read": "node scripts/bench-read.ts",
+    "bench:analyze": "node scripts/bench-analyze.ts",
     "audit": "npm audit --audit-level=high"
   },
   "dependencies": {

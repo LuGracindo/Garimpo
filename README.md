@@ -6,15 +6,16 @@ Aplicação web estática, 100% no navegador, sem backend. Código privado; apen
 
 O projeto é guiado pelo SDD: <https://claude.ai/artifact/A9HS5UVSQGfT23ss8ynQgy>. Em caso de dúvida, o SDD (principalmente a seção 19, de decisões) é a referência.
 
-## Estado: marco M0 (fundação)
+## Estado: marco M1 (núcleo de análise)
 
-| Pronto                                                                                | Ainda não                                             |
-| ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Configuração (TypeScript estrito, Vite, ESLint com regras de segurança, Prettier, CI) | Detecção de formato, fingerprint e pepitas (M1)       |
-| Identidade: tokens dos dois temas, logotipo, fontes locais, tela inicial              | Perfil (linha do tempo), Peneira, contexto (M2)       |
-| Selo **Lacrado** com autoteste real da CSP                                            | Laudo, hashes e Lacre (M3)                            |
-| Protocolo UI↔Worker validado, leitor em streaming, cancelamento                       | Endurecimento, e2e e acessibilidade automatizada (M4) |
-| Gerador determinístico de logs fictícios e benchmark de leitura                       | Publicação (M5)                                       |
+| Pronto                                                                                                               | Ainda não                                                       |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos | Perfil (linha do tempo), Peneira, contexto e virtualização (M2) |
+| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                  | Laudo, hashes e Lacre (M3)                                      |
+| M1: perfis `iso-level`, `jsonl` e `http-combined`                                                                    | Endurecimento, e2e e acessibilidade automatizada (M4)           |
+| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                    | Publicação final (M5)                                           |
+| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                       | Perfis syslog e logfmt, `.gz` (v1.1)                            |
+| M1: lista de pepitas com gabarito e valores que variaram na tela                                                     |                                                                 |
 
 ## Primeiros passos
 
@@ -37,6 +38,7 @@ Depois da primeira instalação, faça commit do `package.json` e do `package-lo
 ```sh
 node scripts/gen-logs.ts --out /tmp/teste.log --profile iso-level --size-mb 50 --seed 1
 node scripts/bench-read.ts --size-mb 200
+node scripts/bench-analyze.ts --size-mb 200 --profile iso-level
 ```
 
 Os logs são sintéticos e determinísticos (mesma semente, mesmo arquivo). Todos os dados pessoais são fictícios: e-mails em `example.test`, IPs nas faixas de documentação e cartão de teste público. **Nunca use logs reais de clientes ou do trabalho.**
@@ -67,7 +69,8 @@ Os headers de segurança estão em `public/_headers` e são copiados para `dist/
 ```
 src/app        shell, selo, cliente do Worker, textos
 src/ui         tokens, estilos, logotipo
-src/worker     leitor em streaming e Worker
+src/core       níveis, perfis, detecção, segmentador, normalização, fingerprint, pepitas
+src/worker     leitor em streaming, orquestração da análise e Worker
 src/shared     protocolo UI↔Worker
 fixtures       gerador de logs sintéticos
 scripts        gerador, benchmark, contraste, verificação do build

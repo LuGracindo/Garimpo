@@ -1,8 +1,14 @@
-// Worker de análise. No marco M0 ele só lê e conta linhas; o parser chega no M1.
+// Worker de análise. Lê o arquivo em streaming, detecta o formato (ou usa o perfil escolhido),
+// segmenta em eventos e agrupa em pepitas. Nunca envia trechos do arquivo em mensagens de erro.
 // Tipagem mínima do escopo global do Worker, para não misturar as libs DOM e WebWorker.
 
-import { PROTOCOL_VERSION, isUiToWorker, type WorkerToUi } from '../shared/protocol.ts';
-import { scanLines } from './reader.ts';
+import {
+  PROTOCOL_VERSION,
+  isUiToWorker,
+  type OpenOptions,
+  type WorkerToUi,
+} from '../shared/protocol.ts';
+import { analyzeBlob } from './analyze-file.ts';
 
 const scope = self as unknown as {
   postMessage(message: WorkerToUi): void;
@@ -15,15 +21,17 @@ function post(message: WorkerToUi): void {
   scope.postMessage(message);
 }
 
-async function runOpen(requestId: number, file: Blob, blockSize: number): Promise<void> {
+async function runOpen(requestId: number, file: Blob, options: OpenOptions): Promise<void> {
   if (active) active.cancelled = true;
   const job = { requestId, cancelled: false };
   active = job;
   const startedAt = performance.now();
 
   try {
-    const result = await scanLines(file, {
-      blockSize,
+    const outcome = await analyzeBlob(file, {
+      blockSize: options.blockSize,
+      profile: options.profile,
+      mode: options.mode,
       isCancelled: () => job.cancelled,
       onProgress: (p) =>
         post({
@@ -36,8 +44,18 @@ async function runOpen(requestId: number, file: Blob, blockSize: number): Promis
         }),
     });
 
-    if (result.cancelled) {
+    if (outcome.kind === 'cancelled') {
       post({ type: 'cancelled', requestId, protocolVersion: PROTOCOL_VERSION });
+      return;
+    }
+
+    if (outcome.kind === 'needs-profile') {
+      post({
+        type: 'needs-profile',
+        requestId,
+        protocolVersion: PROTOCOL_VERSION,
+        candidates: outcome.candidates,
+      });
       return;
     }
 
@@ -45,10 +63,11 @@ async function runOpen(requestId: number, file: Blob, blockSize: number): Promis
       type: 'ready',
       requestId,
       protocolVersion: PROTOCOL_VERSION,
-      bytesRead: result.bytesRead,
-      lines: result.lines,
-      maxLineBytes: result.maxLineBytes,
+      bytesRead: outcome.bytesRead,
+      lines: outcome.result.summary.lines,
+      maxLineBytes: outcome.result.summary.maxLineBytes,
       elapsedMs: performance.now() - startedAt,
+      analysis: outcome.result,
     });
   } catch (error) {
     // SEG-19: só o nome do erro, nunca conteúdo do arquivo.
@@ -85,5 +104,5 @@ scope.onmessage = (event) => {
     return;
   }
 
-  void runOpen(message.requestId, message.file, message.options.blockSize);
+  void runOpen(message.requestId, message.file, message.options);
 };

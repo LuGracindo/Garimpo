@@ -18,6 +18,26 @@ export const t = {
   processando: 'Peneirando…',
   cancelado: 'Cancelado. Nada foi guardado.',
   erroInterno: 'Algo falhou aqui dentro. Nada foi enviado a lugar nenhum.',
-  m0Nota:
-    'Esqueleto do marco M0: por enquanto o Garimpo só lê e conta linhas. A análise em pepitas chega no marco M1.',
+  pepitasTitulo: 'Pepitas',
+  pepitasLimite: (mostradas: number, total: number) =>
+    `Mostrando as ${mostradas} de maior prioridade, de ${total} no total.`,
+  explicar: 'Ver gabarito e valores',
+  gabarito: 'Gabarito',
+  primeiraMensagem: 'Primeira mensagem',
+  nova: 'nova',
+  valoresVariaram: 'Valores que variaram',
+  distintos: (n: number, limitado: boolean) => `${limitado ? 'mais de ' : ''}${n} distintos`,
+  formatoEscolhido: (perfil: string, fonte: string, confianca: number | null) =>
+    fonte === 'auto' && confianca !== null
+      ? `Formato ${perfil}, detectado com confiança de ${Math.round(confianca * 100)}%.`
+      : `Formato ${perfil}, escolhido por você.`,
+  formatoIncerto: 'Não tenho certeza do formato deste arquivo. Qual destes é o certo?',
+  formatoNenhum: 'Nenhum dos formatos conhecidos casou com este arquivo.',
+  escolher: 'Usar este formato',
+  avisoNaoInterpretadas: (n: number) => `${n} linhas não foram interpretadas.`,
+  avisoForaDeOrdem: (n: number) => `${n} eventos aparecem fora de ordem no tempo.`,
+  avisoTruncados: (n: number) => `${n} eventos passaram do limite de tamanho e foram truncados.`,
+  avisoExcesso: 'Muitas pepitas distintas: as menos frequentes foram reunidas em uma só.',
+  avisoLimiteAgrupamento:
+    'Mensagens totalmente livres agrupam mal com regras fixas. Confira o gabarito antes de confiar na contagem.',
 } as const;

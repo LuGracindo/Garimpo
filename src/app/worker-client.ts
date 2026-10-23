@@ -3,6 +3,7 @@
 // aceita URLs da mesma origem. A política se chama "garimpo-worker" e a CSP permite só esse nome.
 
 import workerUrl from '../worker/worker.ts?worker&url';
+import type { NormalizationMode, ProfileId } from '../core/types.ts';
 import {
   DEFAULT_BLOCK_SIZE,
   PROTOCOL_VERSION,
@@ -34,8 +35,13 @@ function createScriptUrl(url: string): string {
   return policy.createScriptURL(url) as unknown as string;
 }
 
+export interface OpenChoices {
+  profile?: ProfileId;
+  mode?: NormalizationMode;
+}
+
 export interface AnalysisClient {
-  open(file: Blob): number;
+  open(file: Blob, choices?: OpenChoices): number;
   cancel(requestId: number): void;
   dispose(): void;
 }
@@ -51,7 +57,7 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
   const send = (message: UiToWorker): void => worker.postMessage(message);
 
   return {
-    open(file) {
+    open(file, choices = {}) {
       const requestId = nextRequestId;
       nextRequestId += 1;
       send({
@@ -59,7 +65,7 @@ export function createAnalysisClient(onMessage: (message: WorkerToUi) => void): 
         requestId,
         protocolVersion: PROTOCOL_VERSION,
         file,
-        options: { blockSize: DEFAULT_BLOCK_SIZE },
+        options: { blockSize: DEFAULT_BLOCK_SIZE, ...choices },
       });
       return requestId;
     },

@@ -272,3 +272,163 @@ body {
   color: var(--ferrugem);
   font-weight: 600;
 }
+
+.subtitulo {
+  margin: 0;
+  font-family: var(--f-titulo);
+  font-weight: 500;
+  font-size: 1.125rem;
+}
+
+.avisos {
+  margin: 0;
+  padding-left: calc(var(--u) * 2.5);
+  color: var(--poeira);
+  font-size: 0.875rem;
+}
+
+.pepitas,
+.escolhas,
+.marcadores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pepitas {
+  display: grid;
+  gap: var(--u);
+}
+
+.pepita {
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 2);
+  background: var(--leito);
+  border: var(--borda);
+  border-left-width: 4px;
+  border-radius: var(--raio);
+}
+
+.sev-fatal,
+.sev-error {
+  border-left-color: var(--ferrugem);
+}
+
+.sev-warn {
+  border-left-color: var(--cobre);
+}
+
+.sev-info,
+.sev-debug {
+  border-left-color: var(--poeira);
+}
+
+.pepita-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--u) calc(var(--u) * 1.5);
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+}
+
+.sev {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sev-fatal .sev,
+.sev-error .sev {
+  color: var(--ferrugem);
+}
+
+.sev-warn .sev {
+  color: var(--cobre);
+}
+
+.sev-info .sev,
+.sev-debug .sev {
+  color: var(--poeira);
+}
+
+.pepita-contagem {
+  font-size: 1rem;
+}
+
+.pepita-id {
+  margin-left: auto;
+  color: var(--poeira);
+}
+
+.etiqueta {
+  padding: 0 var(--u);
+  border: 1px solid var(--areia);
+  border-radius: var(--raio);
+  font-size: 0.75rem;
+}
+
+.pepita-gabarito {
+  margin: var(--u) 0 0;
+  font-family: var(--f-dado);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.pepita details {
+  margin-top: var(--u);
+  color: var(--poeira);
+  font-size: 0.8125rem;
+}
+
+.pepita summary {
+  cursor: pointer;
+}
+
+.rotulo {
+  margin: var(--u) 0 0;
+  font-size: 0.75rem;
+  color: var(--poeira);
+}
+
+.marcadores {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: var(--f-dado);
+}
+
+.marcadores li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px calc(var(--u) * 1.5);
+}
+
+.marcador {
+  color: var(--areia);
+  font-weight: 600;
+}
+
+.marcador-ex {
+  overflow-wrap: anywhere;
+}
+
+.escolhas {
+  display: grid;
+  gap: var(--u);
+}
+
+.escolhas li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.escolha-nome {
+  font-family: var(--f-dado);
+  min-width: 9ch;
+}
+
+.escolha-nota {
+  color: var(--poeira);
+  font-family: var(--f-dado);
+  margin-right: auto;
+}

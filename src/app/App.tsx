@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Logo } from '../ui/Logo.tsx';
-import type { WorkerToUi } from '../shared/protocol.ts';
+import type { AnalysisResult } from '../core/analyzer.ts';
+import type { ProfileId } from '../core/types.ts';
+import type { ProfileCandidate, WorkerToUi } from '../shared/protocol.ts';
 import { runSealSelfTest, type SealState } from './seal.ts';
 import { createAnalysisClient, type AnalysisClient } from './worker-client.ts';
 import { t } from './strings.ts';
@@ -22,7 +24,9 @@ type Phase =
       lines: number;
       maxLineBytes: number;
       elapsedMs: number;
+      analysis: AnalysisResult;
     }
+  | { kind: 'choose'; name: string; candidates: ProfileCandidate[] }
   | { kind: 'cancelled' }
   | { kind: 'error'; code: string; details: string };
 
@@ -53,6 +57,112 @@ function Selo({ state }: { state: SealState }) {
   );
 }
 
+function Avisos({ analysis }: { analysis: AnalysisResult }) {
+  const s = analysis.summary;
+  const avisos: string[] = [];
+  if (s.unparsed > 0) avisos.push(t.avisoNaoInterpretadas(s.unparsed));
+  if (s.outOfOrder > 0) avisos.push(t.avisoForaDeOrdem(s.outOfOrder));
+  if (s.truncatedEvents > 0) avisos.push(t.avisoTruncados(s.truncatedEvents));
+  if (s.overflow) avisos.push(t.avisoExcesso);
+  avisos.push(t.avisoLimiteAgrupamento);
+  return (
+    <ul class="avisos">
+      {avisos.map((aviso) => (
+        <li key={aviso}>{aviso}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Pepita({ nugget }: { nugget: AnalysisResult['nuggets'][number] }) {
+  return (
+    <li class={`pepita sev-${nugget.dominant.toLowerCase()}`}>
+      <div class="pepita-topo">
+        <span class="sev">{nugget.dominant}</span>
+        <span class="pepita-contagem">{numero.format(nugget.count)}×</span>
+        {nugget.isNew ? <span class="etiqueta">{t.nova}</span> : null}
+        <span class="pepita-id">{nugget.shortId}</span>
+      </div>
+      <p class="pepita-gabarito">{nugget.template || '(mensagem vazia)'}</p>
+      <details>
+        <summary>{t.explicar}</summary>
+        {nugget.hasStack ? (
+          <>
+            <p class="rotulo">{t.primeiraMensagem}</p>
+            <p class="pepita-gabarito">{nugget.headTemplate || '(mensagem vazia)'}</p>
+          </>
+        ) : null}
+        {nugget.markers.length > 0 ? (
+          <>
+            <p class="rotulo">{t.valoresVariaram}</p>
+            <ul class="marcadores">
+              {nugget.markers.map((marker) => (
+                <li key={marker.marker}>
+                  <span class="marcador">{marker.marker}</span>
+                  <span class="marcador-n">{t.distintos(marker.distinct, marker.capped)}</span>
+                  <span class="marcador-ex">{marker.examples.join(' · ')}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </details>
+    </li>
+  );
+}
+
+function Resultado({
+  phase,
+  onReset,
+}: {
+  phase: Extract<Phase, { kind: 'done' }>;
+  onReset: () => void;
+}) {
+  const s = phase.analysis.summary;
+  return (
+    <section class="cartao" aria-labelledby="titulo-pronto">
+      <h2 class="cartao-titulo" id="titulo-pronto">
+        {numero.format(s.events)} eventos em {numero.format(s.lines)} linhas.
+      </h2>
+      <p class="arquivo">
+        {phase.name} · {megabytes(phase.size)}
+      </p>
+      {s.profile ? (
+        <p class="nota">{t.formatoEscolhido(s.profile, s.profileSource, s.confidence)}</p>
+      ) : null}
+      <dl class="numeros">
+        <div>
+          <dt>Pepitas</dt>
+          <dd>{numero.format(s.nuggetCount)}</dd>
+        </div>
+        <div>
+          <dt>Erros</dt>
+          <dd>{numero.format(s.severityCounts.ERROR + s.severityCounts.FATAL)}</dd>
+        </div>
+        <div>
+          <dt>Tempo</dt>
+          <dd>{numero.format(Math.round(phase.elapsedMs))} ms</dd>
+        </div>
+      </dl>
+      <Avisos analysis={phase.analysis} />
+      <h3 class="subtitulo">{t.pepitasTitulo}</h3>
+      {phase.analysis.nuggets.length < s.nuggetCount ? (
+        <p class="nota">{t.pepitasLimite(phase.analysis.nuggets.length, s.nuggetCount)}</p>
+      ) : null}
+      <ol class="pepitas">
+        {phase.analysis.nuggets.map((nugget) => (
+          <Pepita key={nugget.id} nugget={nugget} />
+        ))}
+      </ol>
+      <div>
+        <button type="button" class="botao" onClick={onReset}>
+          {t.novaJazida}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const [seal, setSeal] = useState<SealState>('testando');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -61,6 +171,7 @@ export function App() {
   const clientRef = useRef<AnalysisClient | null>(null);
   const currentRequest = useRef<number | null>(null);
   const currentFile = useRef<{ name: string; size: number } | null>(null);
+  const currentBlob = useRef<File | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -95,7 +206,10 @@ export function App() {
           lines: message.lines,
           maxLineBytes: message.maxLineBytes,
           elapsedMs: message.elapsedMs,
+          analysis: message.analysis,
         });
+      } else if (message.type === 'needs-profile') {
+        setPhase({ kind: 'choose', name: file?.name ?? '', candidates: message.candidates });
       } else if (message.type === 'cancelled') {
         setPhase({ kind: 'cancelled' });
       } else {
@@ -123,11 +237,12 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const openFile = (file: File): void => {
+  const openFile = (file: File, profile?: ProfileId): void => {
     const client = clientRef.current;
     if (!client) return;
     currentFile.current = { name: file.name, size: file.size };
-    const requestId = client.open(file);
+    currentBlob.current = file;
+    const requestId = client.open(file, profile ? { profile } : {});
     currentRequest.current = requestId;
     setPhase({
       kind: 'working',
@@ -149,6 +264,7 @@ export function App() {
   const reset = (): void => {
     currentRequest.current = null;
     currentFile.current = null;
+    currentBlob.current = null;
     setPhase({ kind: 'idle' });
   };
 
@@ -209,29 +325,38 @@ export function App() {
                 </button>
               </div>
             </section>
-          ) : phase.kind === 'done' ? (
-            <section class="cartao" aria-labelledby="titulo-pronto">
-              <h2 class="cartao-titulo" id="titulo-pronto">
-                {numero.format(phase.lines)} linhas em {megabytes(phase.size)}.
+          ) : phase.kind === 'choose' ? (
+            <section class="cartao" aria-labelledby="titulo-formato">
+              <h2 class="cartao-titulo" id="titulo-formato">
+                {phase.candidates.some((c) => c.score > 0) ? t.formatoIncerto : t.formatoNenhum}
               </h2>
               <p class="arquivo">{phase.name}</p>
-              <dl class="numeros">
-                <div>
-                  <dt>Maior linha</dt>
-                  <dd>{numero.format(phase.maxLineBytes)} bytes</dd>
-                </div>
-                <div>
-                  <dt>Tempo</dt>
-                  <dd>{numero.format(Math.round(phase.elapsedMs))} ms</dd>
-                </div>
-              </dl>
-              <p class="nota">{t.m0Nota}</p>
+              <ul class="escolhas">
+                {phase.candidates.map((candidate) => (
+                  <li key={candidate.profile}>
+                    <span class="escolha-nome">{candidate.profile}</span>
+                    <span class="escolha-nota">{Math.round(candidate.score * 100)}%</span>
+                    <button
+                      type="button"
+                      class="botao"
+                      onClick={() => {
+                        const file = currentBlob.current;
+                        if (file) openFile(file, candidate.profile);
+                      }}
+                    >
+                      {t.escolher}
+                    </button>
+                  </li>
+                ))}
+              </ul>
               <div>
                 <button type="button" class="botao" onClick={reset}>
                   {t.novaJazida}
                 </button>
               </div>
             </section>
+          ) : phase.kind === 'done' ? (
+            <Resultado phase={phase} onReset={reset} />
           ) : phase.kind === 'cancelled' ? (
             <section class="cartao">
               <h2 class="cartao-titulo">{t.cancelado}</h2>
