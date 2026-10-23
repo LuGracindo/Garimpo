@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO (SEG-10): fixar as ações por SHA do commit antes do primeiro push.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format
+      - run: npm run check:contrast
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:dist
+      - run: npm audit --audit-level=high
+      # TODO (SEG-17): adicionar varredura de segredos (ex.: gitleaks) e OSV.
+      # TODO (marco M4): e2e (Playwright), acessibilidade (axe) e benchmarks na CI.

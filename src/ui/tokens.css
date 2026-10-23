@@ -1,0 +1,71 @@
+/*
+  Tokens de identidade do Garimpo (SDD 2.4).
+  Dois temas: "Fundo de rio" (escuro, padrão) e "Areia seca" (claro).
+  Regra central: o ouro (--ouro) aparece em UM elemento dominante por tela.
+  Contraste verificado por scripts/check-contrast.ts (meta WCAG AA).
+*/
+
+:root {
+  color-scheme: dark;
+
+  --leito: #16120e;
+  --argila: #211b15;
+  --seixo: #2e261e;
+  --areia: #e9dfcb;
+  --poeira: #a89b84;
+  --ouro: #e3a72f;
+  --ferrugem: #d5532f;
+  --cobre: #c98a4b;
+  --agua: #5c8a94;
+  --musgo: #7e9a62;
+
+  --raio: 2px;
+  --borda: 1px solid var(--seixo);
+  --u: 8px;
+
+  --f-titulo: 'Fraunces Variable', Georgia, serif;
+  --f-ui: 'Hanken Grotesk', system-ui, sans-serif;
+  --f-dado: 'JetBrains Mono', ui-monospace, monospace;
+
+  --t-rapido: 120ms;
+  --t-decantar: 240ms;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --leito: #f4eddd;
+    --argila: #fbf7ee;
+    --seixo: #e3d8c2;
+    --areia: #231c14;
+    --poeira: #6b5d49;
+    --ouro: #8f5c00;
+    --ferrugem: #b23a17;
+    --cobre: #8a5a22;
+    --agua: #2f6672;
+    --musgo: #4f6b3a;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --leito: #f4eddd;
+  --argila: #fbf7ee;
+  --seixo: #e3d8c2;
+  --areia: #231c14;
+  --poeira: #6b5d49;
+  --ouro: #8f5c00;
+  --ferrugem: #b23a17;
+  --cobre: #8a5a22;
+  --agua: #2f6672;
+  --musgo: #4f6b3a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-rapido: 0ms;
+    --t-decantar: 0ms;
+  }
+}

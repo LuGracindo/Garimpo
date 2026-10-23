@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+*.log
+.DS_Store
+# logs gerados localmente (nunca versionar logs, nem sintéticos grandes)
+/tmp-logs
+*.generated.log
+benchmarks/last.json

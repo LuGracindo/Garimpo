@@ -1,0 +1,274 @@
+/* Estilos do aplicativo. Sem atributos style no HTML (CSP style-src 'self'). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--leito);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--leito);
+  color: var(--areia);
+  font-family: var(--f-ui);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--areia);
+  outline-offset: 2px;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+/* Cabeçalho com o motivo de estratos (camadas horizontais de sedimento). */
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  background: var(--argila);
+  border-bottom: var(--borda);
+  position: relative;
+}
+
+.topo::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 6px;
+  background: linear-gradient(
+    to bottom,
+    var(--seixo) 0 2px,
+    var(--argila) 2px 3px,
+    var(--seixo) 3px 5px,
+    var(--leito) 5px 6px
+  );
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.5);
+}
+
+.logo {
+  color: var(--poeira);
+}
+
+.logo-pepita {
+  fill: var(--ouro);
+}
+
+.nome {
+  margin: 0;
+  font-family: var(--f-titulo);
+  font-weight: 500;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.nome::first-letter {
+  font-size: 1.12em;
+}
+
+.assinatura {
+  margin: 2px 0 0;
+  color: var(--poeira);
+  font-size: 0.8125rem;
+}
+
+/* Selo Lacrado: forma + cor + rótulo (nunca só cor). */
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--u);
+  padding: 4px calc(var(--u) * 1.25);
+  border: 1px solid currentColor;
+  border-radius: var(--raio);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--poeira);
+}
+
+.selo-lacrado {
+  color: var(--musgo);
+}
+
+.selo-sem-lacre {
+  color: var(--cobre);
+}
+
+.selo-icone {
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+}
+
+.selo-lacrado .selo-icone {
+  clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+}
+
+.selo-sem-lacre .selo-icone {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.selo-testando .selo-icone {
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid currentColor;
+}
+
+.principal {
+  display: grid;
+  place-items: center;
+  padding: calc(var(--u) * 4) calc(var(--u) * 3);
+}
+
+.painel {
+  width: min(720px, 100%);
+}
+
+/* Zona de soltar: neutra em repouso; o ouro só aparece ao arrastar ou no progresso. */
+.soltar {
+  display: grid;
+  gap: var(--u);
+  justify-items: center;
+  padding: calc(var(--u) * 7) calc(var(--u) * 3);
+  background: var(--argila);
+  border: 1px dashed var(--poeira);
+  border-radius: var(--raio);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--t-rapido) ease-out;
+}
+
+.soltar:hover {
+  border-color: var(--areia);
+}
+
+.soltar-ativa {
+  border-color: var(--ouro);
+  border-style: solid;
+}
+
+.soltar-titulo {
+  margin: 0;
+  font-family: var(--f-titulo);
+  font-weight: 500;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+.soltar-sub {
+  margin: 0;
+  color: var(--poeira);
+}
+
+.botao {
+  margin-top: var(--u);
+  padding: var(--u) calc(var(--u) * 2);
+  background: transparent;
+  color: var(--areia);
+  border: 1px solid var(--areia);
+  border-radius: var(--raio);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao:hover {
+  background: var(--seixo);
+}
+
+.entrada-oculta {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cartao {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 3);
+  background: var(--argila);
+  border: var(--borda);
+  border-radius: var(--raio);
+}
+
+.cartao-titulo {
+  margin: 0;
+  font-family: var(--f-titulo);
+  font-weight: 500;
+  font-size: 1.5rem;
+}
+
+.arquivo {
+  margin: 0;
+  color: var(--poeira);
+  font-family: var(--f-dado);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+/* Progresso: o único elemento dourado da tela de processamento. */
+.trilho {
+  height: 8px;
+  background: var(--seixo);
+  border-radius: var(--raio);
+  overflow: hidden;
+}
+
+.enchimento {
+  height: 100%;
+  width: 100%;
+  background: var(--ouro);
+  transform-origin: left center;
+  transition: transform var(--t-rapido) linear;
+}
+
+.numeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 3);
+  margin: 0;
+  font-family: var(--f-dado);
+  font-size: 0.9375rem;
+}
+
+.numeros dt {
+  color: var(--poeira);
+  font-size: 0.75rem;
+}
+
+.numeros dd {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.nota {
+  margin: 0;
+  color: var(--poeira);
+  font-size: 0.875rem;
+}
+
+.erro {
+  margin: 0;
+  color: var(--ferrugem);
+  font-weight: 600;
+}
