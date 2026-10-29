@@ -10,10 +10,14 @@ Fonte: SDD, seção 16.1, e seção 19 (decisões de 22 de outubro de 2026). Cad
 | ADR-04 | Preact e gráficos próprios                                                 | Aceito   |
 | ADR-05 | Impressão digital da jazida por blocos com Web Crypto                      | Proposto |
 | ADR-06 | A chave da pepita é o gabarito exato, não um hash                          | Aceito   |
-| ADR-07 | Código privado; só a aplicação compilada é publicada                       | Decidido |
+| ADR-07 | Código privado; só a aplicação compilada é publicada                       | Revogado |
 | ADR-08 | Um Worker na v1                                                            | Aceito   |
 | ADR-09 | Agrupamento por regras, não por IA                                         | Aceito   |
 | ADR-10 | Sem telemetria no cliente                                                  | Aceito   |
+
+## Revisão do ADR-07 (29 de outubro de 2026)
+
+O repositório passou a ser público, sob licença MIT. A garantia de sigilo nunca dependeu do código ser fechado: ela vem da CSP (ADR-01) e da ausência de backend (ADR-02), que qualquer pessoa pode conferir no navegador e em `public/_headers`. Abrir o código torna essa verificação mais fácil.
 
 ## Ajustes surgidos na implementação do M0
 

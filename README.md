@@ -2,47 +2,82 @@
 
 _Peneire o log. Encontre a pepita._ Análise de logs que não sai da sua máquina.
 
-Aplicação web estática, 100% no navegador, sem backend. Código privado; apenas a aplicação compilada é publicada, para uso pessoal.
+**[Abrir o Garimpo](https://garimpo-fbfsk7x2q9.lucasgracindo73.workers.dev/)**
 
-## Estado: marco M3 completo (laudo, hashes e Lacre)
+O Garimpo agrupa milhares de linhas de log em poucas **pepitas**: erros com a mesma forma (mesma mensagem com valores diferentes, mesmo stack trace) viram um único item, com contagem, severidade e linha do tempo. É uma aplicação web estática que roda 100% no navegador, sem backend: o arquivo é lido localmente, em streaming, e nenhum byte é enviado para fora.
 
-| Pronto                                                                                                                                                                                         | Ainda não                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| M0: configuração, identidade, selo **Lacrado**, protocolo UI↔Worker, leitor em streaming, gerador de logs sintéticos                                                                           | Endurecimento, e2e e acessibilidade automatizada (M4) |
-| M1: detecção automática do formato (RF-10) e escolha manual (RF-11)                                                                                                                            | Publicação final (M5)                                 |
-| M1: perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash` (formato `Lvl: 10 - ... - data hora:ms - T123 - contexto - mensagem`)                                                            | Perfis embutidos syslog e logfmt, `.gz` (v1.1)        |
-| M1: eventos multilinha (RF-12), campos (RF-13), linhas sem tempo (RF-14), fuso UTC padrão (RF-15)                                                                                              |                                                       |
-| M1: normalização em 11 etapas, assinatura de stack trace, pepitas e prioridade (RF-20 a RF-22)                                                                                                 | Perfis embutidos syslog e logfmt, `.gz` (v1.1)        |
-| M1: lista de pepitas com gabarito e valores que variaram na tela                                                                                                                               |                                                       |
-| M2: Perfil (barras por severidade, seleção de intervalo por arrasto e teclado, tabela equivalente)                                                                                             |                                                       |
-| M2: Peneira (níveis, intervalo, pepita e texto literal), contagem por pepita sob o filtro                                                                                                      |                                                       |
-| M2: detalhe com abas Resumo, Ocorrências e Sedimento, lista virtualizada e contexto sob demanda                                                                                                |                                                       |
-| M2: busca por regex em Worker isolado, derrubado se ficar 2 s sem sinal de vida                                                                                                                |                                                       |
-| M2: atalhos de teclado (`/`, `j`/`k`, `Enter`, `[`/`]`, `f`, `?`, `Esc`), com opção de desligar                                                                                                |                                                       |
-| M2: estados de arquivo binário, acima de 2 GB e sem memória                                                                                                                                    |                                                       |
-| Perfil personalizado: o formato é descrito por regex com grupos nomeados, com pré-visualização e perfis salvos no navegador                                                                    |                                                       |
-| M3: Laudo em HTML autocontido (sem scripts, CSP própria) e JSON `garimpo-laudo/1`, com hash SHA-256 de integridade                                                                             |                                                       |
-| M3: impressão digital da jazida (SHA-256 por blocos de 4 MiB) e id do build no laudo                                                                                                           |                                                       |
-| M3: Lacre: e-mail, IPv4/IPv6, CPF/CNPJ (com dígitos verificadores), cartão (Luhn), JWT e chaves de API; UUID e telefone opcionais. Marcadores `<EMAIL_1>`; mapa só em memória, baixado à parte |                                                       |
-| M4: testes de robustez (texto aleatório, Lacre, escape, selo adulterado, regexes embutidas contra entradas hostis)                                                                             |                                                       |
-| M4: e2e no Chromium com CSP real e acessibilidade (axe): `npm run build && npm run e2e`                                                                                                        |                                                       |
-| M3: tela do Laudo (`e`), Lacre também nas linhas exibidas, verificador `npm run verify:laudo -- laudo.html --jazida arquivo.log`                                                               |                                                       |
+## Por que confiar que o log não sai da máquina
 
-## Primeiros passos
+A garantia não depende de promessa, e sim de configuração verificável:
+
+- **CSP com `connect-src 'none'`** (`public/_headers`): o navegador bloqueia qualquer requisição de rede feita pela aplicação, inclusive por código de terceiros.
+- **Selo Lacrado**: ao abrir, a interface tenta uma requisição a um domínio `.invalid` e só mostra o selo se a CSP a bloquear.
+- **Sem telemetria, cookies ou serviços de terceiros** em tempo de execução. Uma única dependência de execução (Preact).
+- **Lacre**: mascara e-mail, IPv4/IPv6, CPF/CNPJ, cartão, JWT e chaves de API antes de exportar um laudo.
+
+## Funcionalidades
+
+- **Detecção automática do formato**, com perfis `iso-level`, `jsonl`, `http-combined` e `lvl-dash`, além de perfil personalizado por regex com grupos nomeados.
+- **Eventos multilinha**: stack traces são reconhecidos e assinados (exceção + primeiros frames + causa).
+- **Normalização em 11 etapas** (UUID, hex, JWT, URLs, números…) para chegar ao gabarito de cada pepita.
+- **Perfil**: histograma por severidade com seleção de intervalo por arrasto ou teclado, e tabela equivalente para leitores de tela.
+- **Peneira**: filtros por nível, intervalo, pepita, texto literal e regex (em Worker isolado, derrubado se travar).
+- **Laudo** em HTML autocontido e JSON (`garimpo-laudo/1`) com hash SHA-256 de integridade e impressão digital do arquivo, conferíveis pelo verificador de linha de comando.
+- **Atalhos de teclado** (`/`, `j`/`k`, `Enter`, `[`/`]`, `f`, `e`, `?`, `Esc`) e arquivos de até 2 GB.
+
+## Arquitetura
+
+```
+Interface (Preact) ──protocolo tipado──▶ Worker de análise ──▶ Worker de regex
+   │                                        │
+   │  pede fatias sob demanda               │  lê o File em streaming e guarda
+   └────────────── Blob original ◀──────────┘  só offsets e índices (ADR-03)
+```
+
+- A interface nunca recebe o arquivo inteiro: o Worker guarda offsets, e as linhas exibidas são relidas do `Blob` original por fatias.
+- Todo conteúdo de log é tratado como entrada hostil: sem `innerHTML` (o ESLint falha), Trusted Types exigidos pela CSP.
+- As decisões e os ajustes de cada marco estão em [`docs/adr`](docs/adr/README.md).
+
+```
+src/app        shell, selo, cliente do Worker, textos
+src/ui         tokens, estilos, logotipo
+src/core       níveis, perfis, detecção, segmentador, normalização, fingerprint, pepitas, laudo, Lacre
+src/worker     leitor em streaming, sessão de consultas e Workers
+src/shared     protocolo UI↔Worker e política Trusted Types
+fixtures       gerador de logs sintéticos
+scripts        benchmark, contraste, verificação do build, e2e, laudo, segredos
+tests/unit     testes (Vitest e fast-check)
+docs/adr       registro de decisões
+public         _headers, robots.txt, favicon
+```
+
+## Rodando localmente
 
 Requer Node 22 ou superior.
 
 ```sh
-sh scripts/install-deps.sh      # instala com versões exatas e gera o package-lock.json
-npm run typecheck
-npm run lint
-npm test
-npm run check:contrast
-npm run dev                     # servidor local
-npm run build && npm run check:dist
+npm ci                  # versões exatas do package-lock.json (scripts de instalação desligados no .npmrc)
+npm run dev             # servidor local
 ```
 
-Depois da primeira instalação, faça commit do `package.json` e do `package-lock.json`. O `.npmrc` usa `save-exact=true` e `ignore-scripts=true` (SEG-10).
+Verificações (as mesmas da CI):
+
+```sh
+npm run typecheck
+npm run lint
+npm run format
+npm test
+npm run check:contrast
+npm run check:secrets
+npm run build && npm run check:dist
+npx playwright install chromium && npm run e2e   # e2e com CSP real e acessibilidade (axe)
+```
+
+Conferir um laudo exportado contra o arquivo original:
+
+```sh
+npm run verify:laudo -- laudo.html --jazida arquivo.log
+```
 
 ## Logs de teste e benchmark
 
@@ -54,38 +89,27 @@ node scripts/bench-analyze.ts --size-mb 200 --profile iso-level
 
 Os logs são sintéticos e determinísticos (mesma semente, mesmo arquivo). Todos os dados pessoais são fictícios: e-mails em `example.test`, IPs nas faixas de documentação e cartão de teste público. **Nunca use logs reais de clientes ou do trabalho.**
 
-Perfis do gerador: `iso-level`, `jsonl`, `http-combined`, `lvl-dash`.
+## Publicação (Cloudflare Workers)
 
-## Publicação (Cloudflare Pages)
+O site é servido como assets estáticos de um Worker (`wrangler.jsonc` aponta para `dist`). Para publicar o seu, conecte o repositório em Workers & Pages > Create application > Import a repository:
 
-Conecte o repositório privado em Workers & Pages > Create application > Pages > Connect to Git.
+| Campo                | Valor             |
+| -------------------- | ----------------- |
+| Build command        | `npm run build`   |
+| Variável de ambiente | `NODE_VERSION=22` |
 
-| Campo                  | Valor             |
-| ---------------------- | ----------------- |
-| Build command          | `npm run build`   |
-| Build output directory | `dist`            |
-| Variável de ambiente   | `NODE_VERSION=22` |
+Os headers de segurança estão em `public/_headers` e são copiados para `dist/`. Depois de cada deploy, confira que a hospedagem entrega exatamente esses headers:
 
-Os headers de segurança estão em `public/_headers` e são copiados para `dist/`. Depois do primeiro deploy, confira no navegador (aba Rede) que a resposta traz a CSP e que o selo mostra **Lacrado**.
-
-## Regras do projeto
-
-- Conteúdo de log é entrada hostil: nada de `innerHTML` e afins (o ESLint falha).
-- A CSP usa `connect-src 'none'`: a aplicação não consegue enviar dados para fora.
-- Sem telemetria, sem cookies, sem serviços de terceiros em tempo de execução.
-- Máximo de 5 dependências de execução (hoje: 1, o Preact).
-
-## Estrutura
-
+```sh
+node scripts/check-live.ts https://garimpo-fbfsk7x2q9.lucasgracindo73.workers.dev
 ```
-src/app        shell, selo, cliente do Worker, textos
-src/ui         tokens, estilos, logotipo
-src/core       níveis, perfis, detecção, segmentador, normalização, fingerprint, pepitas
-src/worker     leitor em streaming, orquestração da análise e Worker
-src/shared     protocolo UI↔Worker
-fixtures       gerador de logs sintéticos
-scripts        gerador, benchmark, contraste, verificação do build
-tests/unit     testes (Vitest e fast-check)
-docs/adr       registro de decisões
-public         _headers, robots.txt, favicon
-```
+
+## Estado
+
+**Pronto (v1):** núcleo de análise (M1), Perfil, Peneira e detalhe (M2), laudo, impressão digital e Lacre (M3), testes de robustez, e2e e acessibilidade automatizada (M4).
+
+**Próximos passos:** publicação final (M5); perfis embutidos syslog e logfmt e leitura de `.gz` (v1.1).
+
+## Licença
+
+[MIT](LICENSE) © 2026 Lucas Gracindo
