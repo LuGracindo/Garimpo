@@ -1,2 +1,15 @@
+# Buscadores não indexam o site; redes sociais podem ler a página para montar a pré-visualização do link.
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
 User-agent: *
 Disallow: /
