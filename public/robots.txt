@@ -1,4 +1,4 @@
-# Buscadores não indexam o site; redes sociais podem ler a página para montar a pré-visualização do link.
+# Buscadores nao indexam o site; redes sociais podem ler a pagina para montar a pre-visualizacao do link.
 User-agent: LinkedInBot
 Allow: /
 
